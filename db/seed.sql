@@ -1,5 +1,5 @@
 INSERT INTO seasons (name, is_active) VALUES ('Season 1', true)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO weeks (season_id, number, drops_at, submissions_close_at, voting_closes_at)
 VALUES (
@@ -20,4 +20,4 @@ FROM weeks w,
     ('Shoey', 'You know what you did.', 'unhinged')
   ) AS o(title, description, tier)
 WHERE w.number = 1
-ON CONFLICT DO NOTHING;
+ON CONFLICT (week_id, title) DO NOTHING;

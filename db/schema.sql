@@ -7,9 +7,16 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS seasons (
   id         SERIAL PRIMARY KEY,
-  name       TEXT NOT NULL,
+  -- UNIQUE so the seed's ON CONFLICT DO NOTHING has something to conflict on.
+  -- Without it the seed is not idempotent and re-running duplicates rows.
+  name       TEXT NOT NULL UNIQUE,
   is_active  BOOLEAN NOT NULL DEFAULT false
 );
+
+-- At most one active season. getCurrentWeek picks "the latest dropped week of
+-- the active season"; with two active seasons that choice is arbitrary.
+CREATE UNIQUE INDEX IF NOT EXISTS seasons_one_active
+  ON seasons ((is_active)) WHERE is_active;
 
 CREATE TABLE IF NOT EXISTS weeks (
   id                   SERIAL PRIMARY KEY,
@@ -29,7 +36,9 @@ CREATE TABLE IF NOT EXISTS objectives (
   week_id     INTEGER NOT NULL REFERENCES weeks(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  tier        TEXT NOT NULL CHECK (tier IN ('easy', 'hard', 'unhinged'))
+  tier        TEXT NOT NULL CHECK (tier IN ('easy', 'hard', 'unhinged')),
+  -- Same reason as seasons.name: makes the seed genuinely idempotent.
+  UNIQUE (week_id, title)
 );
 
 CREATE TABLE IF NOT EXISTS submissions (

@@ -41,3 +41,28 @@ describe('shapeCurrentWeek', () => {
     expect(week?.objectives[0].mySubmissionId).toBeNull()
   })
 })
+
+describe('shapeCurrentWeek with a week that has no objectives', () => {
+  const emptyWeekRows: WeekRow[] = [
+    {
+      ...base,
+      objective_id: null,
+      title: null as unknown as string,
+      description: null as unknown as string,
+      tier: null as unknown as WeekRow['tier'],
+      submission_id: null,
+      submission_user_id: null,
+    },
+  ]
+
+  it('shapes to a CurrentWeek with an empty objectives array', () => {
+    const week = shapeCurrentWeek(emptyWeekRows, 'alice', during)
+    expect(week).not.toBeNull()
+    expect(week?.objectives).toEqual([])
+  })
+
+  it('still reports the correct state from its windows', () => {
+    const week = shapeCurrentWeek(emptyWeekRows, 'alice', during)
+    expect(week?.state).toBe('SUBMITTING')
+  })
+})
