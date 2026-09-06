@@ -61,3 +61,6 @@ footer { margin-top: auto; }
 .desc { margin: 6px 0 0; opacity: .7; font-size: 14px; }
 .medals { margin: 10px 0 0; font-size: 13px; opacity: .8; }
 .state { margin: 6px 0 0; font-size: 13px; font-weight: 600; }
+
+.preview { width: 100%; border-radius: 14px; border: 2px solid var(--ink); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
+.capture { display: flex; flex-direction: column; gap: 12px; }
