@@ -9,47 +9,53 @@ fixed yet. Severity is my assessment, not the reporter's.
 
 Fixed together with issue 5 as one `AppHeader` — see below.
 
-## 2. Submission shows "Not submitted" after a successful upload — **Critical**
+## 2. ~~Submission shows "Not submitted" after a successful upload~~ — **FIXED 2026-09-06**
 
-Reported as "I tried to submit a video but then says not submitted still."
+**Root cause was the service worker, and the symptom pointed away from it.**
 
-**Not a data problem, and nothing to do with the placeholder objectives.**
-Verified directly against the database: the upload succeeded and the row exists —
-submission id 20, objective 1 ("Jump in a bush"), `media_type` video, with a valid
-`media_pathname`. Running the app's own `getCurrentWeek` query for that user
-returns `submission_id: 20` on objective 1, exactly as it should.
+The database row and the app's own `getCurrentWeek` query were both verified
+correct before any code changed, which ruled out the write and read paths.
 
-So the write path and the read path are both correct. **The page is rendering
-stale HTML.** Two likely causes, in order:
+`router.push('/')` is a *client-side* navigation, so its request is **not**
+`mode: 'navigate'` — it is a plain fetch of `/?_rsc=...`. It therefore fell past
+the worker's network-first navigate branch straight into the cache-first branch
+and was cached permanently. The page then served that stale payload forever.
+The network-first handler that looked like it covered this never saw the request.
 
-1. `public/sw.js` caches navigation responses into a shared cache and precaches
-   `/` at install time — and the `/` it precaches is the *signed-out* page. The
-   final review flagged this (its comment argues API responses must not be cached
-   because they are per-user, then caches personalized HTML one branch above).
-2. The Next.js App Router client cache: `SubmitFlow` calls `router.push('/')`
-   then `router.refresh()`, which may resolve in the wrong order.
+Fix: `public/sw.js` now caches only an allowlist of immutable static assets
+(`/_next/static/`, `/icons/`, the manifest, the favicon) and touches nothing
+else. No HTML, no RSC payloads, no API responses.
 
-Fix direction: stop the service worker caching authenticated navigation HTML at
-all, then re-test before touching the router logic. Worth confirming which of the
-two it is before changing both.
+This app cannot work offline anyway — every screen reads the database and
+submitting needs the network — so there was never a real offline shell to lose,
+and a stale week is worse than an honest network error.
 
----
+`router.refresh()` now runs before `router.push('/')` so the client Router Cache
+is cleared before navigating, rather than after.
 
-## 3. "Save full recording" navigates away, and Back lands on a 404 — **Important**
+Cache bumped to `brat-v5`; the activate handler purges anything else, so anyone
+holding a poisoned `brat-v4` recovers on next load without clearing site data.
 
-Two bugs in one flow:
+## 3. ~~"Save full recording" navigates away, and Back lands on a 404~~ — **FIXED 2026-09-06**
 
-- The save link is a plain `<a href={blobUrl} download>`, so tapping it navigates
-  the page instead of downloading in place. On iOS Safari the `download`
-  attribute is not honoured for blob URLs the way it is on desktop.
-- Backing out of that view hits a Vercel 404, because the blob URL was never a
-  real route and there is nothing to return to.
+iOS Safari ignores `download=` on a `blob:` URL and navigates to it, replacing
+the app; backing out then hits a revoked URL.
 
-Fix direction: trigger the save without navigating — a programmatic click on a
-detached anchor, or the Web Share API on iOS, which is the more native path for
-"save this video to my phone".
+Fix: the save action is now a `<button>` that uses the Web Share API — which on
+iOS is also the correct way to get a file into Photos — with a download fallback
+for desktop.
 
----
+The fallback opens in a **new context** (`target="_blank"`). This matters: a
+same-tab anchor click was the original bug, so on any browser where `canShare`
+returns false the first fix would have reproduced it exactly. Caught in review.
+
+The share-vs-download decision lives in `lib/media/save.ts` as a pure tested
+function, since that branch decides whether the bug can recur.
+
+**Unverified:** whether iOS `canShare({ files })` returns true for the specific
+MIME type MediaRecorder produces on that device. If it returns false the
+fallback runs, which no longer breaks the app but opens a new tab rather than
+saving directly. Needs a real device to confirm which path runs.
 
 ## 4. ~~Clerk requires a 15-character password~~ — **RESOLVED 2026-09-06**
 
