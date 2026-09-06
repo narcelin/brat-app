@@ -106,8 +106,11 @@ export function SubmitFlow({
         return
       }
 
-      router.push('/')
+      // refresh() clears the client Router Cache, so this must run BEFORE the
+      // navigation — otherwise '/' can render from a cached payload that still
+      // shows the objective as unsubmitted.
       router.refresh()
+      router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -127,6 +130,32 @@ export function SubmitFlow({
         }}
       />
     )
+  }
+
+  /** iOS Safari ignores the `download` attribute on a blob: URL and navigates
+   *  to it instead, replacing the app — and going back then lands on a revoked
+   *  URL. The share sheet is both the fix and the more native way to save to
+   *  Photos; the anchor click is the desktop fallback. */
+  async function saveRecording() {
+    if (!file || !previewUrl) return
+
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] })
+        return
+      } catch (err) {
+        // Dismissing the share sheet is not a failure worth reporting.
+        if (err instanceof Error && err.name === 'AbortError') return
+        // Anything else: fall through to the download fallback below.
+      }
+    }
+
+    const link = document.createElement('a')
+    link.href = previewUrl
+    link.download = file.name
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
   }
 
   return (
@@ -154,9 +183,9 @@ export function SubmitFlow({
         Retake
       </button>
       {previewUrl && (
-        <a className="btn ghost" href={previewUrl} download={file.name}>
+        <button className="btn ghost" onClick={saveRecording} disabled={busy}>
           Save full recording to my phone
-        </a>
+        </button>
       )}
     </div>
   )

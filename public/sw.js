@@ -1,54 +1,65 @@
-const CACHE = 'brat-v4';
+// Brat Olympics service worker.
+//
+// This app cannot work offline: every screen reads the database, and proof
+// upload needs the network. So the worker exists to make the app installable
+// and to serve immutable static assets fast — nothing else.
+//
+// It deliberately caches NO HTML and NO RSC payloads. An earlier version did,
+// which is how a submitted objective kept rendering as "Not submitted": a
+// client-side router navigation is not `mode: 'navigate'`, it is a plain fetch
+// of `/?_rsc=...`, so it fell through to the cache-first branch and was cached
+// permanently. A stale week is worse than an honest network error.
+const CACHE = 'brat-v5';
+
+// Content-addressed or genuinely static, and identical for every player.
 const SHELL = [
-  '/', '/manifest.webmanifest',
-  '/icons/icon-180.png', '/icons/icon-192.png', '/icons/icon-512.png'
+  '/manifest.webmanifest',
+  '/icons/icon-180.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
+/** The only things safe to serve from a shared, long-lived cache. Everything
+ *  else is per-player, per-week, or both. */
+function isCacheableAsset(url) {
+  return (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/manifest.webmanifest'
+  );
+}
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   );
 });
 
-// Network-first for navigations (so you get fresh HTML when online, cache when not),
-// cache-first for everything else.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, copy));
-          return res;
-        })
-        .catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
-    );
-    return;
-  }
-
   const url = new URL(e.request.url);
-
-  // Only ever cache our own static assets. Cross-origin requests (Clerk's auth
-  // scripts) must not be served from a stale cache, and API responses are
-  // per-user — caching them in a shared store would serve one player another
-  // player's data on a shared device.
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
-    return;
-  }
+  if (url.origin !== self.location.origin) return;
+  if (!isCacheableAsset(url)) return; // straight to the network, uncached
 
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, copy));
-      return res;
-    }))
+    caches.match(e.request).then((cached) =>
+      cached ||
+      fetch(e.request).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      }),
+    ),
   );
 });
