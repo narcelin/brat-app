@@ -45,3 +45,19 @@ code { background: rgba(0,0,0,.12); padding: 1px 5px; border-radius: 5px; }
 .counter { font-size: 92px; font-weight: 800; text-align: center; letter-spacing: -.05em; }
 footer { margin-top: auto; }
 .status { margin: 0; font-size: 13px; opacity: .55; }
+
+.card {
+  display: block;
+  padding: 18px 20px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--btn-ink);
+  text-decoration: none;
+}
+.card h2 { margin: 8px 0 0; font-size: 24px; letter-spacing: -.02em; }
+.tier { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; opacity: .75; }
+.tier-unhinged { color: #ff5c5c; opacity: 1; }
+.desc { margin: 6px 0 0; opacity: .7; font-size: 14px; }
+.medals { margin: 10px 0 0; font-size: 13px; opacity: .8; }
+.state { margin: 6px 0 0; font-size: 13px; font-weight: 600; }
