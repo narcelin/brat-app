@@ -10,10 +10,11 @@ export interface MedalValues {
   effort: number
 }
 
-/** Point table from the design spec. Effort is deliberately ~1/10th of gold:
- *  posting garbage on every objective must never beat genuinely trying once. */
+/** Point table from the design spec. Effort points are deliberately small
+ *  relative to medals: posting garbage on every objective must never beat
+ *  genuinely trying once. */
 export const MEDALS: Record<Tier, MedalValues> = {
-  easy: { first: 15, second: 10, third: 5, effort: 1 },
+  easy: { first: 15, second: 10, third: 5, effort: 2 },
   hard: { first: 30, second: 20, third: 10, effort: 3 },
   unhinged: { first: 50, second: 35, third: 20, effort: 5 },
 }
