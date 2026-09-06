@@ -1,7 +1,6 @@
-const CACHE = 'brat-v2';
+const CACHE = 'brat-v3';
 const SHELL = [
-  '/', '/index.html', '/about.html', '/counter.html',
-  '/style.css', '/app.js', '/manifest.webmanifest',
+  '/', '/manifest.webmanifest',
   '/icons/icon-180.png', '/icons/icon-192.png', '/icons/icon-512.png'
 ];
 
@@ -30,7 +29,7 @@ self.addEventListener('fetch', (e) => {
           caches.open(CACHE).then((c) => c.put(e.request, copy));
           return res;
         })
-        .catch(() => caches.match(e.request).then((r) => r || caches.match('/index.html')))
+        .catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
     );
     return;
   }
