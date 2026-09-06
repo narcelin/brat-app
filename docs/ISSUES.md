@@ -59,16 +59,21 @@ detached anchor, or the Web Share API on iOS, which is the more native path for
 
 ---
 
-## 4. Clerk requires a 15-character password — **Minor**
+## 4. ~~Clerk requires a 15-character password~~ — **RESOLVED 2026-09-06**
 
-Too heavy for a 16-person friend group. This is a **Clerk dashboard setting, not
-application code** — nothing in this repo controls it.
+Password requirements relaxed and sign-up switched to username instead of email,
+in the Clerk dashboard. No code change was needed.
 
-Change under User & Authentication → Email, Phone, Username → Password settings.
-Worth considering email codes instead of passwords entirely; for a group this size
-it removes the problem rather than tuning it.
+**Consequence worth knowing (not a bug):** `playerFromClerk` derives the display
+name as `fullName || username || 'Brat'`. With username sign-up, `username` is now
+populated, so players get their real handle on ballots — which matters, because
+Phase 2 voting is unusable if everyone shows up as "Brat".
 
----
+The one existing account still reads `display_name: "Brat"`, created before the
+switch when it had neither field. `currentPlayer()` is read-before-write and
+updates the name whenever Clerk's value changes, so **it self-heals on that
+player's next sign-in**, provided their Clerk account now has a username set.
+Nothing to do unless it is still "Brat" after signing in again.
 
 ## 5. No sign-out and no home navigation — **Important**
 
