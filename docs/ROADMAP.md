@@ -51,6 +51,11 @@ Proves people will judge. This is where the game becomes a game.
 
 ## Phase 3 — Retention
 
+- [ ] **My Profile page** — every submission you have made, your points, your
+      medal count, and your season ranking. One place a player can see their own
+      run of the season. Depends on Phase 2 scoring existing.
+- [ ] Navigation chrome: persistent header with home, profile and sign-out
+      (see `docs/ISSUES.md` issues 1 and 5)
 - [ ] Archive feed of past weeks
 - [ ] Reactions on submissions
 - [ ] Push notifications on drop and reveal
