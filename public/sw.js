@@ -1,4 +1,4 @@
-const CACHE = 'brat-v3';
+const CACHE = 'brat-v4';
 const SHELL = [
   '/', '/manifest.webmanifest',
   '/icons/icon-180.png', '/icons/icon-192.png', '/icons/icon-512.png'
@@ -31,6 +31,16 @@ self.addEventListener('fetch', (e) => {
         })
         .catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
     );
+    return;
+  }
+
+  const url = new URL(e.request.url);
+
+  // Only ever cache our own static assets. Cross-origin requests (Clerk's auth
+  // scripts) must not be served from a stale cache, and API responses are
+  // per-user — caching them in a shared store would serve one player another
+  // player's data on a shared device.
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
     return;
   }
 
