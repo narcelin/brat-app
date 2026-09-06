@@ -1,86 +1,89 @@
-import { del, put } from '@vercel/blob'
+import { del, head } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import { currentPlayer } from '../../../lib/auth/current-player'
 import { getCurrentWeek } from '../../../lib/db/queries'
 import { sql } from '../../../lib/db/client'
-import { canSubmit } from '../../../lib/domain/submission-rules'
-import { MAX_UPLOAD_BYTES, validateTrim } from '../../../lib/domain/trim'
+import {
+  isOwnSubmissionPathname,
+  validateSubmissionRequest,
+} from '../../../lib/domain/submission-request'
 
+/** Best-effort cleanup of a blob we are about to stop referencing. A cleanup
+ *  failure must never mask the reason we are cleaning up. */
+async function discard(pathname: string) {
+  try {
+    await del(pathname)
+  } catch {
+    // best-effort only
+  }
+}
+
+/** Records a submission whose media has already been uploaded straight to
+ *  Blob by the client (see ./upload/route.ts for why).
+ *
+ *  The body here is tiny JSON — a url, a pathname and the trim metadata — so
+ *  the platform's ~4.5MB function body limit is irrelevant.
+ *
+ *  Everything is re-checked. Holding a token from the upload route is not
+ *  proof that the submission is still allowed: the window may have closed
+ *  between minting the token and finishing the upload, and the client may
+ *  simply be lying. In particular the pathname is verified against the key
+ *  this player is allowed to write, and the blob is confirmed to actually
+ *  exist — a client must not be able to claim a pathname it did not upload,
+ *  nor point the row at someone else's media. */
 export async function POST(request: Request) {
   const player = await currentPlayer()
   if (!player) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   }
 
-  const form = await request.formData()
-  const file = form.get('file')
-  const objectiveId = Number(form.get('objectiveId'))
-  const kind = String(form.get('kind'))
-
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'No file supplied' }, { status: 400 })
-  }
-  if (kind !== 'photo' && kind !== 'video') {
-    return NextResponse.json({ error: 'Unknown media kind' }, { status: 400 })
+  let body: Record<string, unknown>
+  try {
+    body = (await request.json()) as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  // Cheap, meaningful checks on the file itself: full duration probing needs
-  // a media parser and is out of scope, but a mismatched MIME type or a
-  // wildly oversized upload are both detectable without one.
-  const expectedPrefix = kind === 'video' ? 'video/' : 'image/'
-  if (!file.type.startsWith(expectedPrefix)) {
-    return NextResponse.json(
-      { error: `File does not look like a ${kind === 'video' ? 'video' : 'photo'}` },
-      { status: 400 },
-    )
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: 'File is too large' }, { status: 413 })
-  }
+  const objectiveId = body.objectiveId
+  const pathname = body.pathname
 
-  if (!Number.isInteger(objectiveId)) {
+  // Pure string checks against the session, so they run before any I/O.
+  if (typeof objectiveId !== 'number' || !Number.isInteger(objectiveId)) {
     return NextResponse.json({ error: 'Invalid objective id' }, { status: 400 })
+  }
+  if (!isOwnSubmissionPathname(pathname, objectiveId, player.id)) {
+    return NextResponse.json({ error: 'Invalid upload reference' }, { status: 400 })
+  }
+
+  // The blob's own metadata is the trustworthy source for size and content
+  // type — far better than the client's claim, which is all the old
+  // multipart route ever had.
+  let blob
+  try {
+    blob = await head(pathname)
+  } catch {
+    return NextResponse.json({ error: 'Upload not found' }, { status: 400 })
   }
 
   const week = await getCurrentWeek(player.id)
-  if (!week) {
-    return NextResponse.json({ error: 'No active week' }, { status: 400 })
-  }
-  if (!week.objectives.some((o) => o.id === objectiveId)) {
-    return NextResponse.json({ error: 'Objective is not in the current week' }, { status: 400 })
-  }
-  if (!canSubmit(week.state)) {
-    return NextResponse.json({ error: 'Submissions are closed' }, { status: 403 })
-  }
-
-  let trimStart: number | null = null
-  let trimEnd: number | null = null
-  let duration: number | null = null
-
-  if (kind === 'video') {
-    trimStart = Number(form.get('trimStart'))
-    trimEnd = Number(form.get('trimEnd'))
-    duration = Number(form.get('duration'))
-
-    const trim = validateTrim(trimStart, trimEnd, duration)
-    if (!trim.ok) {
-      return NextResponse.json({ error: trim.reason }, { status: 400 })
-    }
-    // NOTE: `duration` (and trimStart/trimEnd) above are client-reported.
-    // validateTrim only bounds them against MAX_RECORDING_SECONDS /
-    // MAX_TRIM_SECONDS — it does not verify them against the actual media,
-    // which would need a media parser. A client can still claim a false
-    // duration for a real file. Do not treat duration_seconds as trustworthy
-    // downstream.
-  }
-
-  // Private: the store is not publicly readable, so this URL is not a public
-  // link. Phase 2 streams media back via get(pathname, { access: 'private' })
-  // behind a Clerk check — which is why the pathname is persisted below.
-  const blob = await put(`submissions/${objectiveId}/${player.id}-${Date.now()}`, file, {
-    access: 'private',
-    addRandomSuffix: true,
+  const check = validateSubmissionRequest(week, {
+    objectiveId,
+    kind: body.kind,
+    contentType: blob.contentType,
+    sizeBytes: blob.size,
+    trimStart: body.trimStart,
+    trimEnd: body.trimEnd,
+    duration: body.duration,
   })
+
+  if (!check.ok) {
+    // The upload is already in the store and will never be referenced, so
+    // clean it up rather than leaving an orphan behind.
+    await discard(blob.pathname)
+    return NextResponse.json({ error: check.error }, { status: check.status })
+  }
+
+  const { kind, trimStart, trimEnd, duration } = check.value
 
   let rows: { id: number }[]
   try {
@@ -100,14 +103,7 @@ export async function POST(request: Request) {
       RETURNING id
     `) as { id: number }[]
   } catch (err) {
-    // The blob upload already succeeded; if the insert fails, best-effort
-    // clean it up rather than leaving an orphaned blob. A cleanup failure
-    // must never mask the original error.
-    try {
-      await del(blob.url)
-    } catch {
-      // best-effort only
-    }
+    await discard(blob.pathname)
     throw err
   }
 

@@ -35,7 +35,7 @@ export default async function ObjectivePage({
       </header>
 
       {open ? (
-        <SubmitFlow objectiveId={objective.id} />
+        <SubmitFlow objectiveId={objective.id} playerId={player.id} />
       ) : (
         <p className="status">Submissions are closed for this week.</p>
       )}

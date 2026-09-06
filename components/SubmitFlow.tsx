@@ -1,12 +1,31 @@
 'use client'
 
+import { upload } from '@vercel/blob/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Capture } from './Capture'
 import { Trimmer } from './Trimmer'
-import { validateTrim } from '../lib/domain/trim'
+import { MAX_UPLOAD_BYTES, validateTrim } from '../lib/domain/trim'
+import { submissionPathname } from '../lib/domain/submission-request'
 
-export function SubmitFlow({ objectiveId }: { objectiveId: number }) {
+/** Extension for the blob key. Only cosmetic — the server pins the directory
+ *  and strips anything that is not alphanumeric. */
+function extensionFor(file: File): string {
+  const fromName = file.name.includes('.') ? file.name.split('.').pop() : ''
+  if (fromName) return fromName
+  if (file.type.startsWith('image/')) return 'jpg'
+  return file.type.includes('mp4') ? 'mp4' : 'webm'
+}
+
+export function SubmitFlow({
+  objectiveId,
+  playerId,
+}: {
+  objectiveId: number
+  /** The viewer's own id, used to derive their upload key. Never another
+   *  player's — nothing about anyone else reaches this component. */
+  playerId: string
+}) {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [kind, setKind] = useState<'photo' | 'video'>('video')
@@ -29,29 +48,71 @@ export function SubmitFlow({ objectiveId }: { objectiveId: number }) {
 
   async function submit() {
     if (!file) return
-    setBusy(true)
     setError(null)
 
-    const form = new FormData()
-    form.set('file', file)
-    form.set('objectiveId', String(objectiveId))
-    form.set('kind', kind)
-    if (kind === 'video') {
-      form.set('trimStart', String(trim.start))
-      form.set('trimEnd', String(trim.end))
-      form.set('duration', String(duration))
-    }
-
-    const res = await fetch('/api/submissions', { method: 'POST', body: form })
-    setBusy(false)
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: 'Upload failed' }))
-      setError(body.error ?? 'Upload failed')
+    // Fail fast and legibly rather than letting the store reject the PUT.
+    // The same cap is enforced server-side, in the token and again against
+    // the stored blob's real size.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError('That recording is too large to upload. Try a shorter clip.')
       return
     }
-    router.push('/')
-    router.refresh()
+
+    setBusy(true)
+
+    const trimFields =
+      kind === 'video'
+        ? { trimStart: trim.start, trimEnd: trim.end, duration }
+        : {}
+
+    try {
+      // Straight to Blob: routing the file through a serverless function
+      // would cap it at ~4.5MB, which a ~25s clip already exceeds. The
+      // handleUpload route re-checks every rule before minting the token.
+      const blob = await upload(
+        submissionPathname(objectiveId, playerId, extensionFor(file)),
+        file,
+        {
+          access: 'private',
+          contentType: file.type,
+          handleUploadUrl: '/api/submissions/upload',
+          clientPayload: JSON.stringify({
+            objectiveId,
+            kind,
+            contentType: file.type,
+            sizeBytes: file.size,
+            ...trimFields,
+          }),
+        },
+      )
+
+      // Then a tiny JSON body to record the row. Deliberately not
+      // onUploadCompleted, which never fires on localhost.
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          url: blob.url,
+          pathname: blob.pathname,
+          objectiveId,
+          kind,
+          ...trimFields,
+        }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Upload failed' }))
+        setError(body.error ?? 'Upload failed')
+        return
+      }
+
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!file) {
