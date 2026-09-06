@@ -29,8 +29,48 @@
 --      this keeps every statement idempotent without a dollar-quoted DO
 --      block, which db/apply.mjs refuses to run.
 
--- 1a. Re-point submissions that would NOT collide with an existing
--- submission on the canonical objective for the same user.
+-- 1a. For every (objective group, user) pair, keep only the submission
+-- with the lowest id and delete the rest. "Objective group" spans ALL
+-- objectives sharing a (week_id, title) - the eventual canonical one
+-- included - not just the non-canonical duplicates, because a user may
+-- have a real submission on the canonical objective AND on one or more
+-- duplicates; ranking across the whole group is what makes the survivor
+-- unique per user before the re-point in step 1b runs. Without this, two
+-- duplicate (non-canonical) submissions from the same user could each
+-- independently pass a "does the canonical row already have my
+-- submission?" check (evaluated against the pre-statement snapshot) and
+-- both attempt to move to the canonical objective, violating
+-- submissions UNIQUE (objective_id, user_id) - unique enforcement is
+-- immediate, not deferred, so that would abort the migration.
+WITH canonical_objective AS (
+  SELECT week_id, title, MIN(id) AS canonical_id
+  FROM objectives
+  GROUP BY week_id, title
+),
+group_map AS (
+  SELECT o.id AS objective_id, c.week_id, c.title, c.canonical_id
+  FROM objectives o
+  JOIN canonical_objective c ON c.week_id = o.week_id AND c.title = o.title
+),
+ranked AS (
+  SELECT
+    s.id AS submission_id,
+    ROW_NUMBER() OVER (
+      PARTITION BY gm.week_id, gm.title, s.user_id
+      ORDER BY s.id
+    ) AS rn
+  FROM submissions s
+  JOIN group_map gm ON gm.objective_id = s.objective_id
+)
+DELETE FROM submissions s
+USING ranked r
+WHERE s.id = r.submission_id
+  AND r.rn > 1;
+
+-- 1b. Exactly one submission per (objective group, user) now remains, so
+-- re-pointing the survivors that sit on a non-canonical duplicate cannot
+-- collide with anything: any other submission that could have collided
+-- was already deleted in step 1a.
 WITH canonical_objective AS (
   SELECT week_id, title, MIN(id) AS canonical_id
   FROM objectives
@@ -39,26 +79,6 @@ WITH canonical_objective AS (
 UPDATE submissions s
 SET objective_id = c.canonical_id
 FROM objectives o, canonical_objective c
-WHERE s.objective_id = o.id
-  AND o.week_id = c.week_id
-  AND o.title = c.title
-  AND o.id <> c.canonical_id
-  AND NOT EXISTS (
-    SELECT 1 FROM submissions s2
-    WHERE s2.objective_id = c.canonical_id AND s2.user_id = s.user_id
-  );
-
--- 1b. Any submission that DOES collide (same user already has a submission
--- on the canonical objective) is dropped in favor of the canonical one,
--- rather than left to be destroyed non-deterministically by the delete
--- below or to block it with a unique-constraint violation.
-WITH canonical_objective AS (
-  SELECT week_id, title, MIN(id) AS canonical_id
-  FROM objectives
-  GROUP BY week_id, title
-)
-DELETE FROM submissions s
-USING objectives o, canonical_objective c
 WHERE s.objective_id = o.id
   AND o.week_id = c.week_id
   AND o.title = c.title
