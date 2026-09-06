@@ -14,20 +14,21 @@ eight weeks.
 
 Runs in a spreadsheet. See "Out of scope for season 1" in the design.
 
-## Phase 1 — The posting loop
+## Phase 1 — The posting loop ✅ SHIPPED 2026-09-06
 
 Proves people will actually post. Nothing else matters if they won't.
+Live at https://brats.anico.dev. 95 unit tests + 3 integration tests.
 
-- [ ] Next.js app replacing the static shell (keep manifest, service worker, colours)
-- [ ] Postgres via Vercel Marketplace + schema
-- [ ] Clerk auth, invite-only
-- [ ] This Week screen: 3 objectives, tier badges, submission status
-- [ ] In-app capture: photo, and video up to 60s via MediaRecorder
-- [ ] Non-destructive trim (trim_start / trim_end metadata)
-- [ ] Save full capture to camera roll
-- [ ] Upload to Vercel Blob
-- [ ] Week state machine: DROPPED -> SUBMITTING -> VOTING -> CLOSED
-- [ ] Submissions hidden until submission window closes
+- [x] Next.js app replacing the static shell (keep manifest, service worker, colours)
+- [x] Postgres via Vercel Marketplace + schema
+- [x] Clerk auth, invite-only
+- [x] This Week screen: 3 objectives, tier badges, submission status
+- [x] In-app capture: photo, and video up to 60s via MediaRecorder
+- [x] Non-destructive trim (trim_start / trim_end metadata)
+- [x] Save full capture to camera roll
+- [x] Upload to Vercel Blob (direct-to-Blob client upload — a server route cannot take >4.5MB)
+- [x] Week state machine: DROPPED -> SUBMITTING -> VOTING -> CLOSED
+- [x] Submissions hidden until submission window closes
 
 ## Phase 2 — The judging loop
 
@@ -40,6 +41,13 @@ Proves people will judge. This is where the game becomes a game.
 - [ ] Scoring derived from votes on voting close
 - [ ] Leaderboard: season points + medal table
 - [ ] **Measure whether people finish voting** — the top risk in the design
+
+## Phase 2 prerequisites carried over from Phase 1
+
+- [ ] Authenticated media streaming route — Blob is private, so `get(pathname, { access: 'private' })` behind a Clerk check is required before any proof can be played back
+- [ ] Do NOT treat `access: 'private'` as the reveal gate; the upload token cannot constrain it
+- [ ] Point `test:integration` at a separate Neon branch — dev and production currently share one database
+- [ ] Delete the previous blob when a submission is replaced
 
 ## Phase 3 — Retention
 
