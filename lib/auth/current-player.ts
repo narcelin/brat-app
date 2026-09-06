@@ -33,13 +33,28 @@ export async function currentPlayer(): Promise<Player | null> {
 
   const player = playerFromClerk(user)
 
-  await sql`
-    INSERT INTO users (id, display_name, avatar_url)
-    VALUES (${player.id}, ${player.displayName}, ${player.avatarUrl})
-    ON CONFLICT (id) DO UPDATE
-      SET display_name = EXCLUDED.display_name,
-          avatar_url   = EXCLUDED.avatar_url
-  `
+  // Read before write. This runs on every authenticated page render, so the
+  // common path must be a SELECT — an unconditional upsert would turn every
+  // page view into a database write and contend on the same row.
+  const existing = (await sql`
+    SELECT display_name, avatar_url FROM users WHERE id = ${player.id}
+  `) as { display_name: string; avatar_url: string | null }[]
+
+  const current = existing[0]
+  const changed =
+    !current ||
+    current.display_name !== player.displayName ||
+    current.avatar_url !== player.avatarUrl
+
+  if (changed) {
+    await sql`
+      INSERT INTO users (id, display_name, avatar_url)
+      VALUES (${player.id}, ${player.displayName}, ${player.avatarUrl})
+      ON CONFLICT (id) DO UPDATE
+        SET display_name = EXCLUDED.display_name,
+            avatar_url   = EXCLUDED.avatar_url
+    `
+  }
 
   return player
 }
