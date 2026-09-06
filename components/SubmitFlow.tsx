@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Capture } from './Capture'
 import { Trimmer } from './Trimmer'
+import { validateTrim } from '../lib/domain/trim'
 
 export function SubmitFlow({ objectiveId }: { objectiveId: number }) {
   const router = useRouter()
@@ -14,7 +15,17 @@ export function SubmitFlow({ objectiveId }: { objectiveId: number }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const previewUrl = file ? URL.createObjectURL(file) : null
+  // Memoised on `file` so a re-render (e.g. every Trimmer.onChange tick while
+  // dragging the trim slider) does not mint a fresh blob URL each time — and
+  // revoked below whenever `file` changes or the component unmounts, so URLs
+  // never outlive the file they point to.
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   async function submit() {
     if (!file) return
@@ -50,7 +61,8 @@ export function SubmitFlow({ objectiveId }: { objectiveId: number }) {
           setFile(captured)
           setKind(capturedKind)
           setDuration(capturedDuration)
-          setTrim({ start: 0, end: Math.min(15, capturedDuration), valid: true })
+          const end = Math.min(15, capturedDuration)
+          setTrim({ start: 0, end, valid: validateTrim(0, end, capturedDuration).ok })
         }}
       />
     )

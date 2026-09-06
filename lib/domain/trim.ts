@@ -1,6 +1,14 @@
 /** Recording length drives file size and upload reliability. */
 export const MAX_RECORDING_SECONDS = 60
 
+/** Full duration probing needs a media parser and is out of scope for the
+ *  server route, so this is the cheap check that stands in for it: a hard
+ *  cap on upload size. 60s at the ~1.5 Mbps capture bitrate is roughly
+ *  (1.5 Mbps / 8) * 60s =~ 11MB, so 25MB is generous headroom above a
+ *  legitimate max-length recording while still refusing a wildly oversized
+ *  upload. */
+export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 /** Trim length drives *viewing* time, which is the real constraint: with 16
  *  entrants, 60s clips would be 16 minutes to review a single objective.
  *  Capping the visible range at 15s keeps a week's voting near 15 minutes. */

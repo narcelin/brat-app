@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { validateTrim, MAX_RECORDING_SECONDS, MAX_TRIM_SECONDS } from '../../lib/domain/trim'
+import {
+  validateTrim,
+  MAX_RECORDING_SECONDS,
+  MAX_TRIM_SECONDS,
+  MAX_UPLOAD_BYTES,
+} from '../../lib/domain/trim'
+
+describe('MAX_UPLOAD_BYTES', () => {
+  it('is 25MB, generous headroom above a 60s recording at ~1.5 Mbps', () => {
+    const bitrateBytesPerSecond = (1.5 * 1_000_000) / 8
+    const expectedRecordingBytes = bitrateBytesPerSecond * MAX_RECORDING_SECONDS
+    expect(MAX_UPLOAD_BYTES).toBe(25 * 1024 * 1024)
+    expect(MAX_UPLOAD_BYTES).toBeGreaterThan(expectedRecordingBytes)
+    // "generous headroom", not an order of magnitude off
+    expect(MAX_UPLOAD_BYTES).toBeLessThan(expectedRecordingBytes * 5)
+  })
+})
 
 describe('validateTrim', () => {
   it('accepts a trim inside both caps', () => {

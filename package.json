@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "node --env-file=.env.development.local ./node_modules/.bin/vitest run tests/integration",
     "db:apply": "node --env-file=.env.development.local db/apply.mjs db/schema.sql db/seed.sql"
   },
   "dependencies": {
