@@ -30,20 +30,22 @@ Live at https://brats.anico.dev. 95 unit tests + 3 integration tests.
 - [x] Week state machine: DROPPED -> SUBMITTING -> VOTING -> CLOSED
 - [x] Submissions hidden until submission window closes
 
-## Phase 1.5 — Admin controls
+## Phase 1.5 — Admin controls ✅ SHIPPED 2026-09-06
 
 Needed before Phase 2 can be tested at all: time-based windows make every test a
 waiting game, and there is no way to advance a week without editing the database.
 
-- [ ] Admin role on a player (Clerk `publicMetadata`, checked server-side — never
+- [x] Admin role on a player (Clerk `publicMetadata`, checked server-side — never
       trust a client claim)
 - [ ] Admin screen: create and edit a week's three objectives and their tiers
-- [ ] **Advance the week manually** — force `SUBMITTING → VOTING → CLOSED`
+      (not built — objectives are still seeded by SQL, which is fine until
+      draft day produces the real ones)
+- [x] **Advance the week manually** — force `SUBMITTING → VOTING → CLOSED`
       rather than waiting on timestamps. `weekState()` stays the fallback when
       no manual override is set, so the game still runs itself if nobody
       intervenes
-- [ ] "Call the vote" — close submissions early and open voting
-- [ ] Guard: only an admin may advance a week, and advancing must never reopen
+- [x] "Call the vote" — 'Move to VOTING' does exactly this — close submissions early and open voting
+- [x] Guard: only an admin may advance a week, and advancing must never reopen
       a closed one (that would let proof be added after reveal)
 
 ## Phase 2 — The judging loop

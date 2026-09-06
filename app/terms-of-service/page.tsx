@@ -178,7 +178,7 @@ export default function TermsOfServicePage() {
           <h2>12. Contact</h2>
           <p>
             Questions, requests, or concerns about these Terms go straight to the person who
-            runs this: <a href="mailto:arcelin.nicolas@gmail.com">arcelin.nicolas@gmail.com</a>.
+            runs this: <a href="mailto:nicotech@fastmail.com">nicotech@fastmail.com</a>.
           </p>
         </section>
 

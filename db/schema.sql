@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS weeks (
   drops_at             TIMESTAMPTZ NOT NULL,
   submissions_close_at TIMESTAMPTZ NOT NULL,
   voting_closes_at     TIMESTAMPTZ NOT NULL,
+  -- Admin override; null means this week runs on its timestamps alone.
+  forced_state         TEXT CHECK (forced_state IS NULL OR forced_state IN ('SUBMITTING', 'VOTING', 'CLOSED')),
   UNIQUE (season_id, number),
   -- The rule that stops voting from overlapping submitting, enforced by the
   -- database so a bad seed can never create an unfair week.

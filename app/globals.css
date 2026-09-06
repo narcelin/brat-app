@@ -237,3 +237,29 @@ footer { margin-top: auto; }
 .legal a { color: inherit; }
 .legal .doc-footer { font-size: 13px; opacity: .65; }
 .legal .doc-footer a { text-decoration: underline; }
+
+/* --- Admin --------------------------------------------------------------- */
+
+.admin-state {
+  padding: 16px 18px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+}
+.admin-current {
+  margin: 6px 0 8px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+}
+/* Stacked label and explanation: each action changes when proof becomes
+   visible to the whole group, so the button says what it will do. */
+.admin-action { display: block; font-weight: 700; }
+.admin-blurb {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: 13px;
+  opacity: .75;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.admin-error { color: #7a0016; font-weight: 600; }

@@ -188,7 +188,7 @@ export default function PrivacyPolicyPage() {
           <h2>12. Contact</h2>
           <p>
             For any privacy question or to exercise the rights above, email{' '}
-            <a href="mailto:arcelin.nicolas@gmail.com">arcelin.nicolas@gmail.com</a> directly.
+            <a href="mailto:nicotech@fastmail.com">nicotech@fastmail.com</a> directly.
           </p>
         </section>
 

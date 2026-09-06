@@ -8,6 +8,7 @@ const base = {
   drops_at: new Date('2026-09-01T00:00:00Z'),
   submissions_close_at: new Date('2026-09-08T00:00:00Z'),
   voting_closes_at: new Date('2026-09-09T00:00:00Z'),
+  forced_state: null,
 }
 
 const rows: WeekRow[] = [
@@ -29,6 +30,21 @@ describe('shapeCurrentWeek', () => {
 
   it('derives the week state from the windows', () => {
     expect(shapeCurrentWeek(rows, 'alice', during)?.state).toBe('SUBMITTING')
+  })
+
+  it('lets an admin override win over the clock', () => {
+    const forced = rows.map((r) => ({ ...r, forced_state: 'VOTING' as const }))
+    const week = shapeCurrentWeek(forced, 'alice', during)
+    expect(week?.state).toBe('VOTING')
+    // The real schedule stays visible so the override is never invisible.
+    expect(week?.naturalState).toBe('SUBMITTING')
+    expect(week?.forcedState).toBe('VOTING')
+  })
+
+  it('reports no override when none is set', () => {
+    const week = shapeCurrentWeek(rows, 'alice', during)
+    expect(week?.forcedState).toBeNull()
+    expect(week?.state).toBe(week?.naturalState)
   })
 
   it('reports the viewers own submission', () => {

@@ -1,6 +1,8 @@
 import { sql } from './client'
 import type { Tier } from '../domain/tiers'
-import { weekState, type WeekState, type WeekWindows } from '../domain/week-state'
+import {
+  effectiveWeekState, type ForcedState, type WeekState, type WeekWindows,
+} from '../domain/week-state'
 import { isSeed, seedFromPlayerId } from '../domain/avatar'
 
 export interface WeekRow {
@@ -9,6 +11,7 @@ export interface WeekRow {
   drops_at: Date
   submissions_close_at: Date
   voting_closes_at: Date
+  forced_state: ForcedState | null
   /** Null when the week has no objectives yet — the LEFT JOIN still returns
    *  one row for the week itself. */
   objective_id: number | null
@@ -33,6 +36,10 @@ export interface CurrentWeek {
   id: number
   number: number
   windows: WeekWindows
+  /** What the clock alone would say — shown on the admin screen so it is
+   *  obvious when an override is masking the real schedule. */
+  naturalState: WeekState
+  forcedState: ForcedState | null
   state: WeekState
   objectives: ObjectiveWithMine[]
 }
@@ -68,7 +75,9 @@ export function shapeCurrentWeek(
     id: first.week_id,
     number: first.week_number,
     windows,
-    state: weekState(windows, now),
+    naturalState: effectiveWeekState(windows, null, now),
+    forcedState: first.forced_state,
+    state: effectiveWeekState(windows, first.forced_state, now),
     objectives,
   }
 }
@@ -102,6 +111,7 @@ export async function fetchWeekRows(viewerId: string, now: Date): Promise<WeekRo
       w.drops_at,
       w.submissions_close_at,
       w.voting_closes_at,
+      w.forced_state,
       o.id     AS objective_id,
       o.title,
       o.description,
