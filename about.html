@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>About · Brats</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#8ACE00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="screen">
+  <header>
+    <h1>about</h1>
+    <p class="sub">what makes this installable</p>
+  </header>
+  <ul class="list">
+    <li><b>manifest.webmanifest</b> — name, icons, <code>display: standalone</code>. This is what strips Safari's UI.</li>
+    <li><b>sw.js</b> — a service worker that pre-caches the shell so it opens offline.</li>
+    <li><b>apple-touch-icon</b> — iOS uses this for the home screen icon, not the manifest icons.</li>
+    <li><b>viewport-fit=cover</b> + <code>env(safe-area-inset-*)</code> — keeps content clear of the notch.</li>
+  </ul>
+  <nav class="stack">
+    <a class="btn ghost" href="/">← Home</a>
+  </nav>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
