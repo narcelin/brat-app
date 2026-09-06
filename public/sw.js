@@ -25,7 +25,8 @@ function isCacheableAsset(url) {
   return (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||
-    url.pathname === '/manifest.webmanifest'
+    url.pathname === '/manifest.webmanifest' ||
+    url.pathname === '/favicon.ico'
   );
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Capture } from './Capture'
 import { Trimmer } from './Trimmer'
+import { chooseSaveStrategy } from '../lib/media/save'
 import { MAX_UPLOAD_BYTES, validateTrim } from '../lib/domain/trim'
 import { submissionPathname } from '../lib/domain/submission-request'
 
@@ -135,24 +136,30 @@ export function SubmitFlow({
   /** iOS Safari ignores the `download` attribute on a blob: URL and navigates
    *  to it instead, replacing the app — and going back then lands on a revoked
    *  URL. The share sheet is both the fix and the more native way to save to
-   *  Photos; the anchor click is the desktop fallback. */
+   *  Photos.
+   *
+   *  The fallback opens in a NEW context deliberately: on any browser that
+   *  ignores `download` for blob: URLs, a same-tab anchor click would
+   *  reproduce the original bug. */
   async function saveRecording() {
     if (!file || !previewUrl) return
 
-    if (navigator.canShare?.({ files: [file] })) {
+    if (chooseSaveStrategy(navigator, file) === 'share') {
       try {
         await navigator.share({ files: [file] })
         return
       } catch (err) {
         // Dismissing the share sheet is not a failure worth reporting.
         if (err instanceof Error && err.name === 'AbortError') return
-        // Anything else: fall through to the download fallback below.
+        // Anything else falls through to the download path below.
       }
     }
 
     const link = document.createElement('a')
     link.href = previewUrl
     link.download = file.name
+    link.target = '_blank'
+    link.rel = 'noopener'
     document.body.appendChild(link)
     link.click()
     link.remove()
