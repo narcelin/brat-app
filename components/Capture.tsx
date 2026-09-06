@@ -25,6 +25,9 @@ export function Capture({
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+  const [needsTap, setNeedsTap] = useState(false)
+  const [live, setLive] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -41,7 +44,9 @@ export function Capture({
           return
         }
         streamRef.current = stream
-        if (videoRef.current) videoRef.current.srcObject = stream
+        // Held in state as well as a ref: the element may not be mounted when
+        // this resolves, and a ref write alone would never re-run the attach.
+        setStream(stream)
       })
       .catch(() => setError('Camera access denied. Enable it in Settings to submit proof.'))
 
@@ -51,6 +56,52 @@ export function Capture({
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
   }, [])
+
+  // Attaching the stream is not enough to make it visible. `autoPlay` does not
+  // reliably fire for a srcObject assigned after mount, and React does not
+  // dependably set the `muted` ATTRIBUTE — which iOS requires before it will
+  // autoplay anything. Both are set here on the element itself, then play() is
+  // called explicitly. Without this the preview is a black rectangle even
+  // though the camera is on and permission was granted.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !stream) return
+
+    video.muted = true
+    video.playsInline = true
+    video.srcObject = stream
+
+    let cancelled = false
+    video
+      .play()
+      .then(() => {
+        if (!cancelled) {
+          setLive(true)
+          setNeedsTap(false)
+        }
+      })
+      .catch(() => {
+        // Autoplay refused despite the above — the platform wants a gesture.
+        if (!cancelled) setNeedsTap(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [stream])
+
+  async function startPreview() {
+    const video = videoRef.current
+    if (!video) return
+    try {
+      video.muted = true
+      await video.play()
+      setLive(true)
+      setNeedsTap(false)
+    } catch {
+      setError('The camera would not start. Close other apps using it and try again.')
+    }
+  }
 
   // Hard stop at the recording cap, mirroring the server-side check.
   useEffect(() => {
@@ -140,7 +191,19 @@ export function Capture({
 
   return (
     <div className="capture">
-      <video ref={videoRef} autoPlay playsInline muted className="preview" />
+      <div className="preview-wrap">
+        <video ref={videoRef} autoPlay playsInline muted className="preview" />
+        {!live && (
+          <p className="preview-hint">
+            {needsTap ? 'Tap “Start camera” below' : 'Starting camera…'}
+          </p>
+        )}
+      </div>
+      {needsTap && (
+        <button className="btn" onClick={startPreview}>
+          Start camera
+        </button>
+      )}
       {recording && (
         <p className="status">
           {elapsed.toFixed(1)}s / {MAX_RECORDING_SECONDS}s

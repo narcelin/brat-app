@@ -263,3 +263,19 @@ footer { margin-top: auto; }
 }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 .admin-error { color: #7a0016; font-weight: 600; }
+
+/* The preview is black until the stream actually plays, so say what is
+   happening rather than leaving a mute black rectangle. */
+.preview-wrap { position: relative; }
+.preview-hint {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  opacity: .8;
+  pointer-events: none;
+}
