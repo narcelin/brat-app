@@ -755,13 +755,32 @@ Expected: `applied db/schema.sql` then `applied db/seed.sql`
 
 ```ts
 // File: lib/db/client.ts
-import { neon } from '@neondatabase/serverless'
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set. Run: vercel env pull .env.development.local')
+let client: NeonQueryFunction<false, false> | null = null
+
+/** Resolved on first query, not at import. Importing this module must never
+ *  require a database to exist — otherwise any unit test that transitively
+ *  imports it fails on a fresh clone or in CI, even when it touches no I/O. */
+function client_(): NeonQueryFunction<false, false> {
+  if (!client) {
+    const url = process.env.DATABASE_URL
+    if (!url) {
+      throw new Error('DATABASE_URL is not set. Run: vercel env pull .env.development.local')
+    }
+    client = neon(url)
+  }
+  return client
 }
 
-export const sql = neon(process.env.DATABASE_URL)
+export const sql: NeonQueryFunction<false, false> = new Proxy(
+  (() => {}) as unknown as NeonQueryFunction<false, false>,
+  {
+    apply: (_t, _this, args) =>
+      (client_() as unknown as (...a: unknown[]) => unknown)(...args),
+    get: (_t, prop) => (client_() as unknown as Record<string | symbol, unknown>)[prop],
+  },
+)
 ```
 
 - [ ] **Step 7: Verify the seed landed**
@@ -919,13 +938,28 @@ export async function currentPlayer(): Promise<Player | null> {
 
   const player = playerFromClerk(user)
 
-  await sql`
-    INSERT INTO users (id, display_name, avatar_url)
-    VALUES (${player.id}, ${player.displayName}, ${player.avatarUrl})
-    ON CONFLICT (id) DO UPDATE
-      SET display_name = EXCLUDED.display_name,
-          avatar_url   = EXCLUDED.avatar_url
-  `
+  // Read before write. This runs on every authenticated page render, so the
+  // common path must be a SELECT — an unconditional upsert would turn every
+  // page view into a database write and contend on the same row.
+  const existing = (await sql`
+    SELECT display_name, avatar_url FROM users WHERE id = ${player.id}
+  `) as { display_name: string; avatar_url: string | null }[]
+
+  const current = existing[0]
+  const changed =
+    !current ||
+    current.display_name !== player.displayName ||
+    current.avatar_url !== player.avatarUrl
+
+  if (changed) {
+    await sql`
+      INSERT INTO users (id, display_name, avatar_url)
+      VALUES (${player.id}, ${player.displayName}, ${player.avatarUrl})
+      ON CONFLICT (id) DO UPDATE
+        SET display_name = EXCLUDED.display_name,
+            avatar_url   = EXCLUDED.avatar_url
+    `
+  }
 
   return player
 }
