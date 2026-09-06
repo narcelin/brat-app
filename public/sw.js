@@ -9,7 +9,7 @@
 // client-side router navigation is not `mode: 'navigate'`, it is a plain fetch
 // of `/?_rsc=...`, so it fell through to the cache-first branch and was cached
 // permanently. A stale week is worse than an honest network error.
-const CACHE = 'brat-v5';
+const CACHE = 'brat-v6';
 
 // Content-addressed or genuinely static, and identical for every player.
 const SHELL = [
@@ -17,6 +17,7 @@ const SHELL = [
   '/icons/icon-180.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
 ];
 
 /** The only things safe to serve from a shared, long-lived cache. Everything

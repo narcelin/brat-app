@@ -81,11 +81,14 @@ footer { margin-top: auto; }
   border-bottom: 2px solid var(--ink);
 }
 .wordmark {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -.04em;
-  color: var(--ink);
-  text-decoration: none;
+  display: block;
+  line-height: 0;
+}
+/* Height-driven: the wordmark is a fixed-ratio image, so pin the height and
+   let the width follow rather than the other way round. */
+.wordmark img {
+  height: 34px;
+  width: auto;
 }
 .wordmark:active { opacity: .6; }
 

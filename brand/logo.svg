@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#8ACE00"/>
+
+  <g transform="translate(256 256) scale(1) translate(-256 -256)">
+  <g font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="128" font-weight="900" text-anchor="middle">
+      <text x="98.5" y="279.9" transform="rotate(-21.49 98.5 279.9)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">B</text>
+      <text x="153.8" y="262.3" transform="rotate(-13.75 153.8 262.3)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">r</text>
+      <text x="206.7" y="252.8" transform="rotate(-6.59 206.7 252.8)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">a</text>
+      <text x="268.1" y="250.2" transform="rotate(1.62 268.1 250.2)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">p</text>
+      <text x="314.8" y="254.0" transform="rotate(7.86 314.8 254.0)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">i</text>
+      <text x="360.7" y="263.0" transform="rotate(14.10 360.7 263.0)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">d</text>
+      <text x="418.4" y="281.8" transform="rotate(22.19 418.4 281.8)" fill="none" stroke="#08265C" stroke-width="42" stroke-linejoin="round">s</text>
+      <text x="98.5" y="279.9" transform="rotate(-21.49 98.5 279.9)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">B</text>
+      <text x="153.8" y="262.3" transform="rotate(-13.75 153.8 262.3)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">r</text>
+      <text x="206.7" y="252.8" transform="rotate(-6.59 206.7 252.8)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">a</text>
+      <text x="268.1" y="250.2" transform="rotate(1.62 268.1 250.2)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">p</text>
+      <text x="314.8" y="254.0" transform="rotate(7.86 314.8 254.0)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">i</text>
+      <text x="360.7" y="263.0" transform="rotate(14.10 360.7 263.0)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">d</text>
+      <text x="418.4" y="281.8" transform="rotate(22.19 418.4 281.8)" fill="none" stroke="#FFD200" stroke-width="26" stroke-linejoin="round">s</text>
+      <text x="98.5" y="279.9" transform="rotate(-21.49 98.5 279.9)" fill="#1C63C8">B</text>
+      <text x="153.8" y="262.3" transform="rotate(-13.75 153.8 262.3)" fill="#1C63C8">r</text>
+      <text x="206.7" y="252.8" transform="rotate(-6.59 206.7 252.8)" fill="#1C63C8">a</text>
+      <text x="268.1" y="250.2" transform="rotate(1.62 268.1 250.2)" fill="#1C63C8">p</text>
+      <text x="314.8" y="254.0" transform="rotate(7.86 314.8 254.0)" fill="#1C63C8">i</text>
+      <text x="360.7" y="263.0" transform="rotate(14.10 360.7 263.0)" fill="#1C63C8">d</text>
+      <text x="418.4" y="281.8" transform="rotate(22.19 418.4 281.8)" fill="#1C63C8">s</text>
+  </g>
+
+  <g font-family="Georgia, Times New Roman, serif" font-size="58" font-style="italic" font-weight="700" text-anchor="middle">
+    <text x="256" y="410" fill="none" stroke="#08265C" stroke-width="19" stroke-linejoin="round">Water Park</text>
+    <text x="256" y="410" fill="none" stroke="#FFD200" stroke-width="10" stroke-linejoin="round">Water Park</text>
+    <text x="256" y="410" fill="#1C63C8">Water Park</text>
+  </g>
+  </g>
+</svg>

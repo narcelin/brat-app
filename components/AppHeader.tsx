@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Show, UserButton } from '@clerk/nextjs'
 
@@ -10,8 +11,14 @@ import { Show, UserButton } from '@clerk/nextjs'
 export function AppHeader() {
   return (
     <header className="appbar">
-      <Link href="/" className="wordmark" aria-label="Brat Olympics — this week">
-        brats
+      <Link href="/" className="wordmark" aria-label="Brapids — this week">
+        <Image
+          src="/icons/wordmark.png"
+          alt="Brapids"
+          width={660}
+          height={190}
+          priority
+        />
       </Link>
       <Show when="signed-in">
         <UserButton
