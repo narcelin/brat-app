@@ -17,6 +17,11 @@
 - **Medal values are fixed by tier** and must come from `lib/domain/tiers.ts` — never hardcoded in components.
 - **Preserve the existing PWA install behaviour**: `manifest.webmanifest`, the service worker, the `brat` green (`#8ACE00`), and the iOS meta tags. The app is currently installed on phones at `brats.anico.dev`; breaking the manifest breaks those installs.
 - **Never commit secrets.** `.env*.local` is already gitignored.
+- **Blob store is PRIVATE.** Media is never publicly reachable by URL; it is read back
+  server-side with `get(pathname, { access: 'private' })` behind a Clerk auth check.
+  Therefore every submission must persist its blob **pathname**, not only its URL —
+  the URL alone cannot retrieve a private blob. Phase 1 never plays back stored media
+  (only local pre-upload previews), so the authenticated streaming route is Phase 2 work.
 - Team/scale assumptions: 16 players, 3 objectives per week, 8-week season.
 
 ---
@@ -1635,21 +1640,27 @@ git commit -m "feat: add in-app photo and video capture"
 - Consumes: `validateTrim`, `MAX_TRIM_SECONDS`, `canSubmit`, `currentPlayer`, `getCurrentWeek`
 - Produces: `POST /api/submissions` accepting multipart form data and returning `{ id: number }`
 
-- [ ] **Step 1: Provision Blob and install the SDK**
+- [ ] **Step 1: Add the `media_pathname` column**
 
-```bash
-vercel integration add blob --yes --no-claim || vercel blob store add brats-media
-vercel env pull .env.development.local --yes
-npm install @vercel/blob
+The Blob store (`brats-media`, **private**) and `@vercel/blob` are already provisioned;
+`BLOB_READ_WRITE_TOKEN` is in `.env.development.local`. Do not re-provision.
+
+A private blob cannot be fetched from its URL — retrieval needs the pathname. Add the
+column and apply it:
+
+```sql
+-- File: db/migrations/001-media-pathname.sql
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS media_pathname TEXT;
 ```
 
-Verify the token is present without printing it:
-
 ```bash
-grep -c '^BLOB_READ_WRITE_TOKEN=' .env.development.local
+node --env-file=.env.development.local db/apply.mjs db/migrations/001-media-pathname.sql
 ```
 
-Expected: `1`. If it is `0`, create the store in the Vercel dashboard under Storage → Blob and re-pull.
+Also add the column to `db/schema.sql` (below `media_url`) so a fresh database matches:
+`media_pathname TEXT,`
+
+Expected: the script reports 1 statement applied.
 
 - [ ] **Step 2: Write the trimmer**
 
@@ -1758,18 +1769,22 @@ export async function POST(request: Request) {
     }
   }
 
+  // Private: the store is not publicly readable, so this URL is not a public
+  // link. Phase 2 streams media back via get(pathname, { access: 'private' })
+  // behind a Clerk check — which is why the pathname is persisted below.
   const blob = await put(`submissions/${objectiveId}/${player.id}-${Date.now()}`, file, {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: true,
   })
 
   const rows = (await sql`
     INSERT INTO submissions
-      (objective_id, user_id, media_url, media_type, duration_seconds, trim_start, trim_end)
+      (objective_id, user_id, media_url, media_pathname, media_type, duration_seconds, trim_start, trim_end)
     VALUES
-      (${objectiveId}, ${player.id}, ${blob.url}, ${kind}, ${duration}, ${trimStart}, ${trimEnd})
+      (${objectiveId}, ${player.id}, ${blob.url}, ${blob.pathname}, ${kind}, ${duration}, ${trimStart}, ${trimEnd})
     ON CONFLICT (objective_id, user_id) DO UPDATE
       SET media_url = EXCLUDED.media_url,
+          media_pathname = EXCLUDED.media_pathname,
           media_type = EXCLUDED.media_type,
           duration_seconds = EXCLUDED.duration_seconds,
           trim_start = EXCLUDED.trim_start,
@@ -1953,7 +1968,25 @@ const { neon } = require('@neondatabase/serverless');
 "
 ```
 
-Expected: a `video` row with `trim_end - trim_start <= 15` and `duration_seconds <= 60`.
+Expected: a `video` row with `trim_end - trim_start <= 15`, `duration_seconds <= 60`,
+and a non-null `media_pathname`.
+
+Then confirm the media is genuinely private — fetch the stored URL with no credentials:
+
+```bash
+node --env-file=.env.development.local -e "
+const { neon } = require('@neondatabase/serverless');
+(async () => {
+  const sql = neon(process.env.DATABASE_URL);
+  const [row] = await sql\`SELECT media_url FROM submissions ORDER BY id DESC LIMIT 1\`;
+  const res = await fetch(row.media_url);
+  console.log('unauthenticated fetch status:', res.status);
+})();
+"
+```
+
+Expected: a 4xx status, NOT 200. A 200 means the store is public and the privacy
+decision was not applied.
 
 - [ ] **Step 7: Verify the hiding rule holds against a second account**
 
