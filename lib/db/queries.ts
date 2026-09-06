@@ -72,13 +72,11 @@ export function shapeCurrentWeek(
   }
 }
 
-/** Loads the active week. The join is restricted to the viewer's own
- *  submission, so other players' proof never leaves the database before
- *  reveal — the hiding rule is enforced here, not in the UI. */
-export async function getCurrentWeek(
-  viewerId: string,
-  now: Date = new Date(),
-): Promise<CurrentWeek | null> {
+/** Fetches the raw rows for the active week. The submissions join is
+ *  restricted to the viewer's own row, so another player's proof never
+ *  leaves the database before reveal — the hiding rule is enforced here,
+ *  at the SQL layer, not merely by how the caller shapes the result. */
+export async function fetchWeekRows(viewerId: string, now: Date): Promise<WeekRow[]> {
   // The week is chosen first, on its own, by drop time. Selecting it as a
   // side effect of joining objectives would make a week with no objectives
   // invisible and silently fall back to an older, possibly closed week.
@@ -91,7 +89,7 @@ export async function getCurrentWeek(
     LIMIT 1
   `) as { id: number }[]
 
-  if (weeks.length === 0) return null
+  if (weeks.length === 0) return []
 
   // LEFT JOIN so the week still comes back when it has no objectives yet.
   // The submissions join is restricted to the viewer's own row, so another
@@ -117,5 +115,14 @@ export async function getCurrentWeek(
     ORDER BY o.id ASC
   `) as WeekRow[]
 
+  return rows
+}
+
+/** Loads the active week, shaped for the viewer. */
+export async function getCurrentWeek(
+  viewerId: string,
+  now: Date = new Date(),
+): Promise<CurrentWeek | null> {
+  const rows = await fetchWeekRows(viewerId, now)
   return shapeCurrentWeek(rows, viewerId, now)
 }

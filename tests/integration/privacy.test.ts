@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql } from '../../lib/db/client'
-import { getCurrentWeek } from '../../lib/db/queries'
+import { fetchWeekRows, getCurrentWeek } from '../../lib/db/queries'
 
 // This test hits a real database (DATABASE_URL) and exercises the single
 // most important rule in Phase 1: submissions must stay hidden from other
@@ -56,6 +56,25 @@ describe.skipIf(!process.env.DATABASE_URL)('submission privacy (integration)', (
     if (usersCreated) {
       await sql`DELETE FROM users WHERE id IN (${ALICE}, ${BOB})`.catch(() => {})
     }
+  })
+
+  it("never lets alice's row leave the database for bob's query", async () => {
+    // This is the layer that actually matters: assert directly on the raw
+    // SQL rows, before shapeCurrentWeek gets anywhere near them. A leak here
+    // cannot be masked by JS-layer filtering, unlike an assertion on
+    // getCurrentWeek's output (whose shape has no field capable of carrying
+    // another player's data in the first place).
+    const rows = await fetchWeekRows(BOB, new Date())
+    expect(rows.length).toBeGreaterThan(0)
+
+    for (const row of rows) {
+      expect(row.submission_user_id === null || row.submission_user_id === BOB).toBe(true)
+    }
+
+    const serializedRows = JSON.stringify(rows)
+    expect(serializedRows).not.toContain(ALICE)
+    expect(serializedRows).not.toContain(ALICE_MEDIA_URL)
+    expect(serializedRows).not.toContain(ALICE_MEDIA_PATHNAME)
   })
 
   it("hides alice's submission from bob entirely", async () => {
