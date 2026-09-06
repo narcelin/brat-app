@@ -1,9 +1,12 @@
 import { notFound } from 'next/navigation'
 import { currentPlayer } from '../../../lib/auth/current-player'
-import { getCurrentWeek } from '../../../lib/db/queries'
+import { getCurrentWeek, getObjectiveRoster } from '../../../lib/db/queries'
 import { canSubmit } from '../../../lib/domain/submission-rules'
 import { medalsFor } from '../../../lib/domain/tiers'
-import { SubmitFlow } from '../../../components/SubmitFlow'
+import { ObjectiveRoster } from '../../../components/ObjectiveRoster'
+import { SubmitPanel } from '../../../components/SubmitPanel'
+
+const TIER_LABEL = { easy: 'Easy', hard: 'Hard', unhinged: 'Unhinged' } as const
 
 export default async function ObjectivePage({
   params,
@@ -22,23 +25,33 @@ export default async function ObjectivePage({
 
   const medals = medalsFor(objective.tier)
   const open = canSubmit(week.state)
+  const roster = await getObjectiveRoster(objective.id)
 
   return (
     <main className="screen">
       <header>
-        <span className={`tier tier-${objective.tier}`}>{objective.tier}</span>
-        <h1>{objective.title}</h1>
+        <span className={`tier tier-${objective.tier}`}>{TIER_LABEL[objective.tier]}</span>
+        <h1 className="objective-title">{objective.title}</h1>
         {objective.description && <p className="sub">{objective.description}</p>}
-        <p className="medals">
-          🥇 {medals.first} · 🥈 {medals.second} · 🥉 {medals.third} · effort {medals.effort}
-        </p>
+        <ul className="medal-row">
+          <li><b>{medals.first}</b> 1st</li>
+          <li><b>{medals.second}</b> 2nd</li>
+          <li><b>{medals.third}</b> 3rd</li>
+          <li><b>{medals.effort}</b> effort</li>
+        </ul>
       </header>
 
       {open ? (
-        <SubmitFlow objectiveId={objective.id} playerId={player.id} />
+        <SubmitPanel
+          objectiveId={objective.id}
+          playerId={player.id}
+          alreadySubmitted={objective.mySubmissionId !== null}
+        />
       ) : (
         <p className="status">Submissions are closed for this week.</p>
       )}
+
+      <ObjectiveRoster roster={roster} viewerId={player.id} />
     </main>
   )
 }

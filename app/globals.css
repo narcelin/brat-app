@@ -88,3 +88,70 @@ footer { margin-top: auto; }
   text-decoration: none;
 }
 .wordmark:active { opacity: .6; }
+
+/* --- Objective page ------------------------------------------------------ */
+
+/* The objective title sits under a tier badge and above body copy, so it needs
+   to be smaller than the 56px page-level h1 or it swamps the description. */
+.objective-title {
+  font-size: 40px;
+  line-height: 1.05;
+  margin: 6px 0 0;
+}
+
+/* Medal values as a row of figures rather than a run-on line of emoji — the
+   numbers are what a player is actually weighing up. */
+.medal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.medal-row li {
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.medal-row b { font-size: 15px; letter-spacing: 0; }
+
+/* --- Roster -------------------------------------------------------------- */
+
+.roster { display: flex; flex-direction: column; gap: 10px; }
+.roster-head {
+  margin: 0;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  opacity: .65;
+  font-weight: 700;
+}
+.roster-list { margin: 0; padding: 0; list-style: none; }
+.roster-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, .18);
+  opacity: .5;
+}
+.roster-list li.is-done { opacity: 1; }
+.roster-mark { width: 16px; font-weight: 800; }
+.roster-name { flex: 1; font-weight: 600; }
+.roster-you {
+  font-weight: 400;
+  opacity: .55;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+.roster-state {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  opacity: .7;
+}

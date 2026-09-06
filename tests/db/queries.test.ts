@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeCurrentWeek, type WeekRow } from '../../lib/db/queries'
+import { shapeCurrentWeek, shapeRoster, type WeekRow } from '../../lib/db/queries'
 
 const base = {
   week_id: 1,
@@ -64,5 +64,32 @@ describe('shapeCurrentWeek with a week that has no objectives', () => {
   it('still reports the correct state from its windows', () => {
     const week = shapeCurrentWeek(emptyWeekRows, 'alice', during)
     expect(week?.state).toBe('SUBMITTING')
+  })
+})
+
+describe('shapeRoster', () => {
+  const rows = [
+    { user_id: 'u1', display_name: 'Zoe', avatar_url: null, has_submitted: false },
+    { user_id: 'u2', display_name: 'Mikey', avatar_url: 'https://x/m.png', has_submitted: true },
+    { user_id: 'u3', display_name: 'Alice', avatar_url: null, has_submitted: false },
+    { user_id: 'u4', display_name: 'Bob', avatar_url: null, has_submitted: true },
+  ]
+
+  it('floats everyone who has posted to the top', () => {
+    expect(shapeRoster(rows).map((r) => r.displayName)).toEqual(['Bob', 'Mikey', 'Alice', 'Zoe'])
+  })
+
+  it('orders alphabetically within each group, so the list is stable', () => {
+    const submitted = shapeRoster(rows).filter((r) => r.hasSubmitted).map((r) => r.displayName)
+    expect(submitted).toEqual(['Bob', 'Mikey'])
+  })
+
+  it('carries identity through but has nowhere to put media', () => {
+    const entry = shapeRoster(rows)[0]
+    expect(Object.keys(entry).sort()).toEqual(['avatarUrl', 'displayName', 'hasSubmitted', 'userId'])
+  })
+
+  it('handles an empty roster', () => {
+    expect(shapeRoster([])).toEqual([])
   })
 })

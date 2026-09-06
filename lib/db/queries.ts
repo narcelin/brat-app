@@ -126,3 +126,57 @@ export async function getCurrentWeek(
   const rows = await fetchWeekRows(viewerId, now)
   return shapeCurrentWeek(rows, viewerId, now)
 }
+
+export interface RosterEntry {
+  userId: string
+  displayName: string
+  avatarUrl: string | null
+  hasSubmitted: boolean
+}
+
+export interface RosterRow {
+  user_id: string
+  display_name: string
+  avatar_url: string | null
+  has_submitted: boolean
+}
+
+/** Orders the roster so everyone who has posted floats to the top, then by
+ *  name so the list is stable between renders. */
+export function shapeRoster(rows: RosterRow[]): RosterEntry[] {
+  return rows
+    .map((r) => ({
+      userId: r.user_id,
+      displayName: r.display_name,
+      avatarUrl: r.avatar_url,
+      hasSubmitted: r.has_submitted,
+    }))
+    .sort((a, b) => {
+      if (a.hasSubmitted !== b.hasSubmitted) return a.hasSubmitted ? -1 : 1
+      return a.displayName.localeCompare(b.displayName)
+    })
+}
+
+/** Who has posted proof for an objective — deliberately NOT what they posted.
+ *
+ *  Showing *who* does not let anyone copy or one-up, which is what the
+ *  hidden-until-reveal rule exists to prevent; it only adds social pressure to
+ *  take part. Showing *what* would break the game, so this query selects no
+ *  media column at all: `media_url` and `media_pathname` are never read here,
+ *  and there is nowhere in `RosterEntry` to put them if they were. */
+export async function getObjectiveRoster(objectiveId: number): Promise<RosterEntry[]> {
+  const rows = (await sql`
+    SELECT
+      u.id           AS user_id,
+      u.display_name,
+      u.avatar_url,
+      EXISTS (
+        SELECT 1 FROM submissions s
+        WHERE s.user_id = u.id AND s.objective_id = ${objectiveId}
+      ) AS has_submitted
+    FROM users u
+    ORDER BY u.display_name ASC
+  `) as RosterRow[]
+
+  return shapeRoster(rows)
+}

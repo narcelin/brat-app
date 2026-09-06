@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql } from '../../lib/db/client'
-import { fetchWeekRows, getCurrentWeek } from '../../lib/db/queries'
+import { fetchWeekRows, getCurrentWeek, getObjectiveRoster } from '../../lib/db/queries'
 
 // This test hits a real database (DATABASE_URL) and exercises the single
 // most important rule in Phase 1: submissions must stay hidden from other
@@ -98,5 +98,34 @@ describe.skipIf(!process.env.DATABASE_URL)('submission privacy (integration)', (
     const objective = week!.objectives.find((o) => o.id === objectiveId)
     expect(objective).toBeDefined()
     expect(objective!.mySubmissionId).toBe(submissionId)
+  })
+
+  // The roster deliberately reveals WHO has posted, because that cannot be
+  // copied and it drives participation. It must never reveal WHAT they posted.
+  it('shows that alice has posted without exposing any of her media', async () => {
+    const roster = await getObjectiveRoster(objectiveId!)
+    const alice = roster.find((r) => r.userId === ALICE)
+
+    expect(alice, 'alice should appear on the roster').toBeDefined()
+    expect(alice!.hasSubmitted).toBe(true)
+
+    const serialized = JSON.stringify(roster)
+    expect(serialized).not.toContain(ALICE_MEDIA_URL)
+    expect(serialized).not.toContain(ALICE_MEDIA_PATHNAME)
+    expect(serialized).not.toContain('media')
+  })
+
+  it('shows bob as not having posted', async () => {
+    const roster = await getObjectiveRoster(objectiveId!)
+    expect(roster.find((r) => r.userId === BOB)?.hasSubmitted).toBe(false)
+  })
+
+  it('puts players who have posted above those who have not', async () => {
+    const roster = await getObjectiveRoster(objectiveId!)
+    const firstUnsubmitted = roster.findIndex((r) => !r.hasSubmitted)
+    const lastSubmitted = roster.map((r) => r.hasSubmitted).lastIndexOf(true)
+    if (firstUnsubmitted !== -1 && lastSubmitted !== -1) {
+      expect(lastSubmitted).toBeLessThan(firstUnsubmitted)
+    }
   })
 })
