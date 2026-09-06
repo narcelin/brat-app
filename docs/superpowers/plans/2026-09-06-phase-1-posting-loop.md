@@ -646,7 +646,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS seasons (
   id         SERIAL PRIMARY KEY,
-  name       TEXT NOT NULL,
+  -- UNIQUE so the seed's ON CONFLICT DO NOTHING has something to conflict on.
+  -- Without it the seed is not idempotent and re-running duplicates rows.
+  name       TEXT NOT NULL UNIQUE,
   is_active  BOOLEAN NOT NULL DEFAULT false
 );
 
@@ -668,7 +670,9 @@ CREATE TABLE IF NOT EXISTS objectives (
   week_id     INTEGER NOT NULL REFERENCES weeks(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  tier        TEXT NOT NULL CHECK (tier IN ('easy', 'hard', 'unhinged'))
+  tier        TEXT NOT NULL CHECK (tier IN ('easy', 'hard', 'unhinged')),
+  -- Same reason as seasons.name: makes the seed genuinely idempotent.
+  UNIQUE (week_id, title)
 );
 
 CREATE TABLE IF NOT EXISTS submissions (
@@ -709,7 +713,7 @@ Real objectives come from draft day (Phase 0). This seed exists only so the app 
 -- File: db/seed.sql
 
 INSERT INTO seasons (name, is_active) VALUES ('Season 1', true)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO weeks (season_id, number, drops_at, submissions_close_at, voting_closes_at)
 VALUES (
@@ -730,7 +734,7 @@ FROM weeks w,
     ('Shoey', 'You know what you did.', 'unhinged')
   ) AS o(title, description, tier)
 WHERE w.number = 1
-ON CONFLICT DO NOTHING;
+ON CONFLICT (week_id, title) DO NOTHING;
 ```
 
 - [ ] **Step 5: Apply the schema and seed**
