@@ -1,10 +1,13 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { sql } from '../db/client'
+import { isAvatarId, type AvatarId } from '../domain/avatars'
 
 export interface Player {
   id: string
   displayName: string
   avatarUrl: string | null
+  /** Null until the player picks one; callers fall back to fallbackAvatarId. */
+  avatarId: AvatarId | null
 }
 
 interface ClerkUserFields {
@@ -21,6 +24,8 @@ export function playerFromClerk(user: ClerkUserFields): Player {
     id: user.id,
     displayName: user.fullName || user.username || 'Brat',
     avatarUrl: user.imageUrl ?? null,
+    // Clerk knows nothing about the cast; the choice lives in our own table.
+    avatarId: null,
   }
 }
 
@@ -37,8 +42,8 @@ export async function currentPlayer(): Promise<Player | null> {
   // common path must be a SELECT — an unconditional upsert would turn every
   // page view into a database write and contend on the same row.
   const existing = (await sql`
-    SELECT display_name, avatar_url FROM users WHERE id = ${player.id}
-  `) as { display_name: string; avatar_url: string | null }[]
+    SELECT display_name, avatar_url, avatar_id FROM users WHERE id = ${player.id}
+  `) as { display_name: string; avatar_url: string | null; avatar_id: number | null }[]
 
   const current = existing[0]
   const changed =
@@ -56,5 +61,8 @@ export async function currentPlayer(): Promise<Player | null> {
     `
   }
 
-  return player
+  return {
+    ...player,
+    avatarId: isAvatarId(current?.avatar_id) ? current.avatar_id : null,
+  }
 }

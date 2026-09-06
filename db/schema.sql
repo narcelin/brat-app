@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,          -- Clerk user id
   display_name  TEXT NOT NULL,
   avatar_url    TEXT,
+  -- Which of the cast the player picked; null until they choose.
+  avatar_id     SMALLINT CHECK (avatar_id IS NULL OR (avatar_id >= 1 AND avatar_id <= 8)),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

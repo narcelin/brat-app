@@ -158,3 +158,57 @@ footer { margin-top: auto; }
   letter-spacing: .06em;
   opacity: .7;
 }
+
+/* --- Avatars ------------------------------------------------------------- */
+
+.roster-face {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  object-fit: cover;
+  flex: none;
+}
+
+.header-face {
+  display: block;
+  line-height: 0;
+}
+.header-face img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  object-fit: cover;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.avatar-choice {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--bg);
+  cursor: pointer;
+  line-height: 0;
+  overflow: hidden;
+  transition: transform .08s ease;
+}
+.avatar-choice img { width: 100%; height: auto; }
+.avatar-choice:active { transform: scale(.96); }
+/* The chosen one is inset and ringed rather than merely tinted — at this size
+   a colour change alone is easy to miss. */
+.avatar-choice.is-chosen {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+  border-color: #FFD200;
+}
+.avatar-choice:disabled { opacity: .6; }

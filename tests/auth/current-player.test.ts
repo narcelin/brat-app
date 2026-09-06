@@ -4,7 +4,7 @@ import { playerFromClerk } from '../../lib/auth/current-player'
 describe('playerFromClerk', () => {
   it('prefers the full name', () => {
     const p = playerFromClerk({ id: 'u1', fullName: 'Mikey', username: 'mikey99', imageUrl: null })
-    expect(p).toEqual({ id: 'u1', displayName: 'Mikey', avatarUrl: null })
+    expect(p).toEqual({ id: 'u1', displayName: 'Mikey', avatarUrl: null, avatarId: null })
   })
 
   it('falls back to the username when there is no full name', () => {
