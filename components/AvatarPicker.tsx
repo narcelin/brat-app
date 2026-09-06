@@ -1,35 +1,40 @@
 'use client'
 
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { AVATAR_IDS, avatarSrc, type AvatarId } from '../lib/domain/avatars'
+import { Avatar } from './Avatar'
+import { randomSeed, seedFromPlayerId } from '../lib/domain/avatar'
 
-export function AvatarPicker({ current }: { current: AvatarId | null }) {
+export function AvatarPicker({
+  playerId,
+  current,
+}: {
+  playerId: string
+  current: number | null
+}) {
   const router = useRouter()
-  const [chosen, setChosen] = useState<AvatarId | null>(current)
-  const [busy, setBusy] = useState<AvatarId | null>(null)
+  const saved = current ?? seedFromPlayerId(playerId)
+
+  const [seed, setSeed] = useState(saved)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function pick(id: AvatarId) {
-    setBusy(id)
+  const dirty = seed !== saved
+
+  async function keep() {
+    setBusy(true)
     setError(null)
-    // Optimistic: the grid is the whole screen, so waiting on a round trip
-    // before showing the selection feels broken.
-    const previous = chosen
-    setChosen(id)
 
     const res = await fetch('/api/avatar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatarId: id }),
+      body: JSON.stringify({ seed }),
     }).catch(() => null)
 
-    setBusy(null)
+    setBusy(false)
 
     if (!res?.ok) {
-      setChosen(previous)
-      setError('Could not save that. Try again.')
+      setError('Could not save that one. Try again.')
       return
     }
     router.refresh()
@@ -37,23 +42,18 @@ export function AvatarPicker({ current }: { current: AvatarId | null }) {
 
   return (
     <div className="stack">
+      <div className="avatar-stage">
+        <Avatar seed={seed} className="avatar-large" title="Your brat" />
+      </div>
+
       {error && <p className="status">{error}</p>}
-      <ul className="avatar-grid">
-        {AVATAR_IDS.map((id) => (
-          <li key={id}>
-            <button
-              type="button"
-              className={`avatar-choice${chosen === id ? ' is-chosen' : ''}`}
-              onClick={() => pick(id)}
-              disabled={busy !== null}
-              aria-pressed={chosen === id}
-              aria-label={`Avatar ${id}`}
-            >
-              <Image src={avatarSrc(id)} alt="" width={256} height={256} />
-            </button>
-          </li>
-        ))}
-      </ul>
+
+      <button className="btn" onClick={() => setSeed(randomSeed())} disabled={busy}>
+        Roll again
+      </button>
+      <button className="btn ghost" onClick={keep} disabled={busy || !dirty}>
+        {busy ? 'Saving…' : dirty ? 'Keep this one' : 'This is your brat'}
+      </button>
     </div>
   )
 }

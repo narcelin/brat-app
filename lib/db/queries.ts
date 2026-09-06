@@ -1,7 +1,7 @@
 import { sql } from './client'
 import type { Tier } from '../domain/tiers'
 import { weekState, type WeekState, type WeekWindows } from '../domain/week-state'
-import { fallbackAvatarId, isAvatarId, type AvatarId } from '../domain/avatars'
+import { isSeed, seedFromPlayerId } from '../domain/avatar'
 
 export interface WeekRow {
   week_id: number
@@ -132,7 +132,7 @@ export interface RosterEntry {
   userId: string
   displayName: string
   avatarUrl: string | null
-  avatarId: AvatarId
+  avatarSeed: number
   hasSubmitted: boolean
 }
 
@@ -140,7 +140,7 @@ export interface RosterRow {
   user_id: string
   display_name: string
   avatar_url: string | null
-  avatar_id: number | null
+  avatar_seed: number | null
   has_submitted: boolean
 }
 
@@ -152,8 +152,8 @@ export function shapeRoster(rows: RosterRow[]): RosterEntry[] {
       userId: r.user_id,
       displayName: r.display_name,
       avatarUrl: r.avatar_url,
-      // Everyone shows a face, chosen or not, so no row renders blank.
-      avatarId: isAvatarId(r.avatar_id) ? r.avatar_id : fallbackAvatarId(r.user_id),
+      // Everyone shows a face, rolled or not, so no row renders blank.
+      avatarSeed: isSeed(Number(r.avatar_seed)) ? Number(r.avatar_seed) : seedFromPlayerId(r.user_id),
       hasSubmitted: r.has_submitted,
     }))
     .sort((a, b) => {
@@ -175,7 +175,7 @@ export async function getObjectiveRoster(objectiveId: number): Promise<RosterEnt
       u.id           AS user_id,
       u.display_name,
       u.avatar_url,
-      u.avatar_id,
+      u.avatar_seed,
       EXISTS (
         SELECT 1 FROM submissions s
         WHERE s.user_id = u.id AND s.objective_id = ${objectiveId}

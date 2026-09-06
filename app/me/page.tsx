@@ -10,9 +10,9 @@ export default async function MePage() {
     <main className="screen">
       <header>
         <h1>{player.displayName}</h1>
-        <p className="sub">Pick your brat. Everyone sees it on the roster.</p>
+        <p className="sub">Roll until you get one you can live with. Everyone sees it.</p>
       </header>
-      <AvatarPicker current={player.avatarId} />
+      <AvatarPicker playerId={player.id} current={player.avatarSeed} />
     </main>
   )
 }

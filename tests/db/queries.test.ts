@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { shapeCurrentWeek, shapeRoster, type WeekRow } from '../../lib/db/queries'
-import { isAvatarId } from '../../lib/domain/avatars'
+import { isSeed } from '../../lib/domain/avatar'
 
 const base = {
   week_id: 1,
@@ -70,10 +70,10 @@ describe('shapeCurrentWeek with a week that has no objectives', () => {
 
 describe('shapeRoster', () => {
   const rows = [
-    { user_id: 'u1', display_name: 'Zoe', avatar_url: null, avatar_id: null, has_submitted: false },
-    { user_id: 'u2', display_name: 'Mikey', avatar_url: 'https://x/m.png', avatar_id: 3, has_submitted: true },
-    { user_id: 'u3', display_name: 'Alice', avatar_url: null, avatar_id: null, has_submitted: false },
-    { user_id: 'u4', display_name: 'Bob', avatar_url: null, avatar_id: 99, has_submitted: true },
+    { user_id: 'u1', display_name: 'Zoe', avatar_url: null, avatar_seed: null, has_submitted: false },
+    { user_id: 'u2', display_name: 'Mikey', avatar_url: 'https://x/m.png', avatar_seed: 12345, has_submitted: true },
+    { user_id: 'u3', display_name: 'Alice', avatar_url: null, avatar_seed: null, has_submitted: false },
+    { user_id: 'u4', display_name: 'Bob', avatar_url: null, avatar_seed: -5, has_submitted: true },
   ]
 
   it('floats everyone who has posted to the top', () => {
@@ -88,19 +88,19 @@ describe('shapeRoster', () => {
   it('carries identity through but has nowhere to put media', () => {
     const entry = shapeRoster(rows)[0]
     expect(Object.keys(entry).sort()).toEqual([
-      'avatarId', 'avatarUrl', 'displayName', 'hasSubmitted', 'userId',
+      'avatarSeed', 'avatarUrl', 'displayName', 'hasSubmitted', 'userId',
     ])
   })
 
-  it('keeps a chosen avatar', () => {
-    expect(shapeRoster(rows).find((r) => r.userId === 'u2')!.avatarId).toBe(3)
+  it('keeps a rolled seed', () => {
+    expect(shapeRoster(rows).find((r) => r.userId === 'u2')!.avatarSeed).toBe(12345)
   })
 
-  it('falls back to a real face when the stored id is missing or invalid', () => {
+  it('falls back to a real face when the stored seed is missing or invalid', () => {
     const zoe = shapeRoster(rows).find((r) => r.userId === 'u1')!
     const bob = shapeRoster(rows).find((r) => r.userId === 'u4')!
-    expect(isAvatarId(zoe.avatarId)).toBe(true)
-    expect(isAvatarId(bob.avatarId)).toBe(true) // 99 is not in the cast
+    expect(isSeed(zoe.avatarSeed)).toBe(true)
+    expect(isSeed(bob.avatarSeed)).toBe(true) // -5 is out of range
   })
 
   it('handles an empty roster', () => {

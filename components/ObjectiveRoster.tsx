@@ -1,5 +1,4 @@
-import Image from 'next/image'
-import { avatarSrc } from '../lib/domain/avatars'
+import { Avatar } from './Avatar'
 import type { RosterEntry } from '../lib/db/queries'
 
 /** Who has posted — never what. Names cannot be copied or one-upped, so this
@@ -24,13 +23,7 @@ export function ObjectiveRoster({
       <ul className="roster-list">
         {roster.map((r) => (
           <li key={r.userId} className={r.hasSubmitted ? 'is-done' : undefined}>
-            <Image
-              className="roster-face"
-              src={avatarSrc(r.avatarId)}
-              alt=""
-              width={256}
-              height={256}
-            />
+            <Avatar seed={r.avatarSeed} className="roster-face" />
             <span className="roster-name">
               {r.displayName}
               {r.userId === viewerId && <span className="roster-you"> you</span>}

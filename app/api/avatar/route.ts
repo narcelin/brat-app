@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { currentPlayer } from '../../../lib/auth/current-player'
 import { sql } from '../../../lib/db/client'
-import { isAvatarId } from '../../../lib/domain/avatars'
+import { isSeed } from '../../../lib/domain/avatar'
 
 export async function POST(request: Request) {
   const player = await currentPlayer()
@@ -10,16 +10,16 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null)
-  const avatarId = (body as { avatarId?: unknown } | null)?.avatarId
+  const seed = (body as { seed?: unknown } | null)?.seed
 
-  // Re-checked server-side: the client picks from a grid, but nothing stops it
-  // posting any number it likes.
-  if (!isAvatarId(avatarId)) {
-    return NextResponse.json({ error: 'Not one of the avatars' }, { status: 400 })
+  // Re-checked server-side: the roll happens in the browser, so the number
+  // arriving here is whatever the client chose to send.
+  if (!isSeed(seed)) {
+    return NextResponse.json({ error: 'Not a valid avatar' }, { status: 400 })
   }
 
   // Scoped to the caller's own row — a player can only change their own face.
-  await sql`UPDATE users SET avatar_id = ${avatarId} WHERE id = ${player.id}`
+  await sql`UPDATE users SET avatar_seed = ${seed} WHERE id = ${player.id}`
 
-  return NextResponse.json({ avatarId })
+  return NextResponse.json({ seed })
 }

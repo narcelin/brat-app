@@ -2,7 +2,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Show, UserButton } from '@clerk/nextjs'
 import { currentPlayer } from '../lib/auth/current-player'
-import { avatarSrc, fallbackAvatarId } from '../lib/domain/avatars'
+import { seedFromPlayerId } from '../lib/domain/avatar'
+import { Avatar } from './Avatar'
 
 /** Persistent navigation chrome. The app is only ever two levels deep
  *  (This Week -> an objective), so the wordmark doubles as the back action
@@ -26,12 +27,7 @@ export async function AppHeader() {
       <Show when="signed-in">
         {player && (
           <Link href="/me" className="header-face" aria-label="Pick your avatar">
-            <Image
-              src={avatarSrc(player.avatarId ?? fallbackAvatarId(player.id))}
-              alt=""
-              width={256}
-              height={256}
-            />
+            <Avatar seed={player.avatarSeed ?? seedFromPlayerId(player.id)} />
           </Link>
         )}
         <UserButton
