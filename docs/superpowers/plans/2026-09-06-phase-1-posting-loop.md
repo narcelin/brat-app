@@ -652,6 +652,11 @@ CREATE TABLE IF NOT EXISTS seasons (
   is_active  BOOLEAN NOT NULL DEFAULT false
 );
 
+-- At most one active season. getCurrentWeek picks "the latest dropped week of
+-- the active season"; with two active seasons that choice is arbitrary.
+CREATE UNIQUE INDEX IF NOT EXISTS seasons_one_active
+  ON seasons ((is_active)) WHERE is_active;
+
 CREATE TABLE IF NOT EXISTS weeks (
   id                   SERIAL PRIMARY KEY,
   season_id            INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
@@ -1102,7 +1107,9 @@ export interface WeekRow {
   drops_at: Date
   submissions_close_at: Date
   voting_closes_at: Date
-  objective_id: number
+  /** Null when the week has no objectives yet — the LEFT JOIN still returns
+   *  one row for the week itself. */
+  objective_id: number | null
   title: string
   description: string
   tier: Tier
@@ -1142,13 +1149,18 @@ export function shapeCurrentWeek(
     votingClosesAt: first.voting_closes_at,
   }
 
-  const objectives: ObjectiveWithMine[] = rows.map((row) => ({
-    id: row.objective_id,
-    title: row.title,
-    description: row.description,
-    tier: row.tier,
-    mySubmissionId: row.submission_user_id === viewerId ? row.submission_id : null,
-  }))
+  // A week with no objectives yields one row whose objective columns are all
+  // null (from the LEFT JOIN). That is a real, renderable state — an empty
+  // week — not an objective, so it is filtered out rather than shaped.
+  const objectives: ObjectiveWithMine[] = rows
+    .filter((row) => row.objective_id !== null)
+    .map((row) => ({
+      id: row.objective_id,
+      title: row.title,
+      description: row.description,
+      tier: row.tier,
+      mySubmissionId: row.submission_user_id === viewerId ? row.submission_id : null,
+    }))
 
   return {
     id: first.week_id,
@@ -1166,36 +1178,45 @@ export async function getCurrentWeek(
   viewerId: string,
   now: Date = new Date(),
 ): Promise<CurrentWeek | null> {
+  // The week is chosen first, on its own, by drop time. Selecting it as a
+  // side effect of joining objectives would make a week with no objectives
+  // invisible and silently fall back to an older, possibly closed week.
+  const weeks = (await sql`
+    SELECT w.id
+    FROM weeks w
+    JOIN seasons se ON se.id = w.season_id AND se.is_active
+    WHERE w.drops_at <= ${now}
+    ORDER BY w.drops_at DESC, w.number DESC
+    LIMIT 1
+  `) as { id: number }[]
+
+  if (weeks.length === 0) return null
+
+  // LEFT JOIN so the week still comes back when it has no objectives yet.
+  // The submissions join is restricted to the viewer's own row, so another
+  // player's proof never leaves the database before reveal.
   const rows = (await sql`
     SELECT
-      w.id   AS week_id,
+      w.id     AS week_id,
       w.number AS week_number,
       w.drops_at,
       w.submissions_close_at,
       w.voting_closes_at,
-      o.id   AS objective_id,
+      o.id     AS objective_id,
       o.title,
       o.description,
       o.tier,
       s.id      AS submission_id,
       s.user_id AS submission_user_id
     FROM weeks w
-    JOIN seasons se ON se.id = w.season_id AND se.is_active
-    JOIN objectives o ON o.week_id = w.id
+    LEFT JOIN objectives o ON o.week_id = w.id
     LEFT JOIN submissions s
       ON s.objective_id = o.id AND s.user_id = ${viewerId}
-    WHERE w.drops_at <= ${now}
-    ORDER BY w.number DESC, o.id ASC
+    WHERE w.id = ${weeks[0].id}
+    ORDER BY o.id ASC
   `) as WeekRow[]
 
-  if (rows.length === 0) return null
-
-  const latestWeekId = rows[0].week_id
-  return shapeCurrentWeek(
-    rows.filter((r) => r.week_id === latestWeekId),
-    viewerId,
-    now,
-  )
+  return shapeCurrentWeek(rows, viewerId, now)
 }
 ```
 
