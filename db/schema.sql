@@ -51,7 +51,10 @@ CREATE TABLE IF NOT EXISTS submissions (
     (media_type = 'video' AND trim_start IS NOT NULL AND trim_end IS NOT NULL
      AND trim_start >= 0 AND trim_end > trim_start
      AND trim_end - trim_start <= 15
-     AND duration_seconds IS NOT NULL AND duration_seconds <= 60)
+     AND duration_seconds IS NOT NULL AND duration_seconds <= 60
+     -- Mirrors validateTrim's "trim end must not run past the end of the
+     -- recording". Without this the database is looser than the domain rule.
+     AND trim_end <= duration_seconds)
   )
 );
 
