@@ -20,3 +20,23 @@ export const VIDEO_BITS_PER_SECOND = 1_500_000
 /** Longest edge for uploaded photos. Full sensor frames are several MB for no
  *  visible gain on a phone screen. */
 export const MAX_PHOTO_EDGE = 1600
+
+/** A recorder can be (re)started only if none exists yet, or the existing one
+ *  has fully wound down. Guards against a double-tap spinning up a second
+ *  `MediaRecorder` against the same stream while the first is still live. */
+export function canStartRecording(state: RecordingState | null): boolean {
+  return state === null || state === 'inactive'
+}
+
+/** Stopping is only meaningful while the recorder is actually recording (or
+ *  paused mid-recording). Calling stop with no recorder, or one that already
+ *  wound down, should be a harmless no-op rather than throwing. */
+export function canStopRecording(state: RecordingState | null): boolean {
+  return state === 'recording' || state === 'paused'
+}
+
+/** A video element only has real pixel dimensions once its stream has
+ *  produced a frame. Capturing before then yields a 0x0 canvas. */
+export function isVideoFrameReady(videoWidth: number, videoHeight: number): boolean {
+  return videoWidth > 0 && videoHeight > 0
+}

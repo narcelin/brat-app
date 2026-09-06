@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { pickMimeType, VIDEO_BITS_PER_SECOND, MAX_PHOTO_EDGE } from '../lib/media/recorder'
+import {
+  pickMimeType,
+  VIDEO_BITS_PER_SECOND,
+  MAX_PHOTO_EDGE,
+  canStartRecording,
+  canStopRecording,
+  isVideoFrameReady,
+} from '../lib/media/recorder'
 import { MAX_RECORDING_SECONDS } from '../lib/domain/trim'
 
 export function Capture({
@@ -13,6 +20,7 @@ export function Capture({
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const startedAtRef = useRef<number>(0)
+  const mountedRef = useRef(true)
 
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -35,6 +43,7 @@ export function Capture({
 
     return () => {
       cancelled = true
+      mountedRef.current = false
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
   }, [])
@@ -53,6 +62,7 @@ export function Capture({
   function startRecording() {
     const stream = streamRef.current
     if (!stream) return
+    if (!canStartRecording(recorderRef.current?.state ?? null)) return
 
     const mimeType = pickMimeType((t) => MediaRecorder.isTypeSupported(t))
     if (!mimeType) {
@@ -70,6 +80,8 @@ export function Capture({
       if (e.data.size > 0) chunks.push(e.data)
     }
     recorder.onstop = () => {
+      recorderRef.current = null
+      if (!mountedRef.current) return
       const duration = (Date.now() - startedAtRef.current) / 1000
       const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm'
       const file = new File(chunks, `proof.${ext}`, { type: mimeType })
@@ -83,6 +95,7 @@ export function Capture({
   }
 
   function stopRecording() {
+    if (!canStopRecording(recorderRef.current?.state ?? null)) return
     recorderRef.current?.stop()
     setRecording(false)
     setElapsed(0)
@@ -91,6 +104,11 @@ export function Capture({
   function takePhoto() {
     const video = videoRef.current
     if (!video) return
+
+    if (!isVideoFrameReady(video.videoWidth, video.videoHeight)) {
+      setError('Camera is still warming up. Try again in a moment.')
+      return
+    }
 
     // Resize to at most 1600px on the long edge before upload. Full sensor
     // frames are several MB each for no visible benefit on a phone screen.
@@ -102,7 +120,11 @@ export function Capture({
 
     canvas.toBlob(
       (blob) => {
-        if (blob) onCaptured(new File([blob], 'proof.jpg', { type: 'image/jpeg' }), 'photo', 0)
+        if (!blob) {
+          setError('Could not process the photo. Please try again.')
+          return
+        }
+        onCaptured(new File([blob], 'proof.jpg', { type: 'image/jpeg' }), 'photo', 0)
       },
       'image/jpeg',
       0.85,
