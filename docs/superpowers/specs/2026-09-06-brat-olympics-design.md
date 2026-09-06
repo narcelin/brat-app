@@ -21,8 +21,11 @@ The proof is the product. The scoreboard is the pretext that makes people genera
 Three objectives per week, one from each tier. The week runs through four states:
 
 ```
-DROPPED -> SUBMITTING -> VOTING -> CLOSED
+PENDING -> SUBMITTING -> VOTING -> CLOSED
 ```
+
+`PENDING` is the window before the drop, when objectives are not yet visible.
+The drop is the *transition* into `SUBMITTING`, not a state of its own.
 
 Submissions **must** close before voting opens. Otherwise early voters rank a
 partial field and late submitters get to see the competition before deciding what
