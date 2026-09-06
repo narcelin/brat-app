@@ -15,8 +15,8 @@ export function AppHeader() {
         <Image
           src="/icons/wordmark.png"
           alt="Brapids"
-          width={660}
-          height={190}
+          width={825}
+          height={300}
           priority
         />
       </Link>

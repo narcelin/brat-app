@@ -99,16 +99,25 @@ await sharp(Buffer.from(svg), { density: 600 }).resize(512, 512).png().toFile('b
 await sharp(Buffer.from(maskable), { density: 600 }).resize(512, 512).png().toFile('brand/maskable-preview.png')
 // Transparent, cropped to the word itself, for the app header — at 30px tall
 // the "Water Park" line is unreadable, so the header uses the arc alone.
+// The box has to clear the tallest cap at the arc's centre AND the p/s
+// descenders at its edges, plus half the 42px outer stroke on both. The
+// previous box stopped at y=276 and sliced the descender off the 'p'.
 const wordmark = buildSvg({
   scale: 1,
   background: 'none',
-  width: 660,
-  height: 190,
-  viewBox: '20 140 472 136',
+  width: 700,
+  height: 330,
+  viewBox: '4 118 504 238',
 })
-await sharp(Buffer.from(wordmark), { density: 600 })
-  .resize(660, 190)
+// trim() crops to the actual ink rather than a hand-guessed box, so the
+// header can pin height and get no stray padding above or below.
+const wordmarkBuf = await sharp(Buffer.from(wordmark), { density: 600 })
+  .trim()
+  .resize({ height: 300 })
   .png({ compressionLevel: 9 })
-  .toFile('public/icons/wordmark.png')
+  .toBuffer()
+await sharp(wordmarkBuf).toFile('public/icons/wordmark.png')
+const meta = await sharp(wordmarkBuf).metadata()
+console.log(`wordmark.png is ${meta.width}x${meta.height} — use these in AppHeader`)
 
 console.log('rendered icons at 180, 192, 512, a padded maskable variant, and a header wordmark')

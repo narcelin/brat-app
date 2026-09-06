@@ -87,7 +87,7 @@ footer { margin-top: auto; }
 /* Height-driven: the wordmark is a fixed-ratio image, so pin the height and
    let the width follow rather than the other way round. */
 .wordmark img {
-  height: 34px;
+  height: 30px;
   width: auto;
 }
 .wordmark:active { opacity: .6; }
