@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   pickMimeType,
   MAX_PHOTO_EDGE,
+  photoScale,
+  photoTargetSize,
   canStartRecording,
   canStopRecording,
   isVideoFrameReady,
@@ -21,9 +23,55 @@ describe('pickMimeType', () => {
   })
 })
 
-describe('MAX_PHOTO_EDGE', () => {
-  it('caps photos at 1600px on the long edge, per the spec', () => {
+describe('photoScale', () => {
+  it('scales a landscape frame against its long edge, not its short one', () => {
+    // 4032x3024 -> long edge is the width.
+    expect(photoScale(4032, 3024, 1600)).toBeCloseTo(1600 / 4032)
+  })
+
+  it('scales a portrait frame against its long edge, not its short one', () => {
+    // 3024x4032 -> long edge is the height. Scaling against the short edge
+    // here would give 1600/3024 and leave the height well over the cap.
+    expect(photoScale(3024, 4032, 1600)).toBeCloseTo(1600 / 4032)
+  })
+
+  it('scales a square frame by either edge', () => {
+    expect(photoScale(2400, 2400, 1600)).toBeCloseTo(1600 / 2400)
+  })
+
+  it('never upscales a frame already under the cap', () => {
+    expect(photoScale(640, 480, 1600)).toBe(1)
+    expect(photoScale(1600, 900, 1600)).toBe(1)
+  })
+
+  it('is a no-op for a frame with no pixels yet', () => {
+    expect(photoScale(0, 0, 1600)).toBe(1)
+  })
+
+  it('defaults to the spec cap of 1600px on the long edge', () => {
     expect(MAX_PHOTO_EDGE).toBe(1600)
+    expect(photoScale(3200, 1800)).toBeCloseTo(0.5)
+  })
+})
+
+describe('photoTargetSize', () => {
+  it('brings the long edge to the cap and keeps the aspect ratio', () => {
+    expect(photoTargetSize(4032, 3024, 1600)).toEqual({ width: 1600, height: 1200 })
+  })
+
+  it('caps the height for a portrait frame', () => {
+    expect(photoTargetSize(3024, 4032, 1600)).toEqual({ width: 1200, height: 1600 })
+  })
+
+  it('leaves a small frame at its original size', () => {
+    expect(photoTargetSize(640, 480, 1600)).toEqual({ width: 640, height: 480 })
+  })
+
+  it('rounds to whole pixels rather than producing a fractional canvas', () => {
+    const size = photoTargetSize(1000, 3333, 1600)
+    expect(Number.isInteger(size.width)).toBe(true)
+    expect(Number.isInteger(size.height)).toBe(true)
+    expect(size.height).toBe(1600)
   })
 })
 

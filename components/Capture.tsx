@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   pickMimeType,
   VIDEO_BITS_PER_SECOND,
-  MAX_PHOTO_EDGE,
+  photoTargetSize,
   canStartRecording,
   canStopRecording,
   isVideoFrameReady,
@@ -28,6 +28,10 @@ export function Capture({
 
   useEffect(() => {
     let cancelled = false
+    // Re-arm on every mount: the cleanup below sets this false, and React
+    // Strict Mode's double-invoke would otherwise leave it false forever,
+    // making `recorder.onstop` a permanent no-op under `next dev`.
+    mountedRef.current = true
 
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' }, audio: true })
@@ -110,12 +114,13 @@ export function Capture({
       return
     }
 
-    // Resize to at most 1600px on the long edge before upload. Full sensor
-    // frames are several MB each for no visible benefit on a phone screen.
-    const scale = Math.min(1, MAX_PHOTO_EDGE / Math.max(video.videoWidth, video.videoHeight))
+    // Resize to at most MAX_PHOTO_EDGE on the long edge before upload. Full
+    // sensor frames are several MB each for no visible benefit on a phone
+    // screen. The maths lives in lib/media/recorder so it can be tested.
+    const size = photoTargetSize(video.videoWidth, video.videoHeight)
     const canvas = document.createElement('canvas')
-    canvas.width = Math.round(video.videoWidth * scale)
-    canvas.height = Math.round(video.videoHeight * scale)
+    canvas.width = size.width
+    canvas.height = size.height
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
 
     canvas.toBlob(

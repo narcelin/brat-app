@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { ServiceWorker } from '../components/ServiceWorker'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          {children}
+          <ServiceWorker />
+        </body>
       </html>
     </ClerkProvider>
   )

@@ -1,4 +1,5 @@
 import type { WeekState } from '../lib/domain/week-state'
+import { LocalTime } from './LocalTime'
 
 const MESSAGE: Record<WeekState, string> = {
   PENDING: 'Next drop coming soon',
@@ -17,7 +18,7 @@ export function WeekStatus({ number, state, closesAt }: {
       <h1>week {number}</h1>
       <p className="sub">{MESSAGE[state]}</p>
       {state === 'SUBMITTING' && (
-        <p className="status">Closes {closesAt.toLocaleString()}</p>
+        <p className="status">Closes <LocalTime iso={closesAt.toISOString()} /></p>
       )}
     </header>
   )

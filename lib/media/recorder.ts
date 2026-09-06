@@ -40,3 +40,27 @@ export function canStopRecording(state: RecordingState | null): boolean {
 export function isVideoFrameReady(videoWidth: number, videoHeight: number): boolean {
   return videoWidth > 0 && videoHeight > 0
 }
+
+/** Scale factor to bring a captured frame down to `maxEdge` on its *long*
+ *  edge. Clamped at 1 so a frame already smaller than the cap is passed
+ *  through untouched — upscaling would inflate the upload for no detail. */
+export function photoScale(
+  width: number,
+  height: number,
+  maxEdge: number = MAX_PHOTO_EDGE,
+): number {
+  const longEdge = Math.max(width, height)
+  if (!(longEdge > 0)) return 1
+  return Math.min(1, maxEdge / longEdge)
+}
+
+/** Target canvas size for a captured frame, with the aspect ratio preserved
+ *  and each side rounded to a whole pixel. */
+export function photoTargetSize(
+  width: number,
+  height: number,
+  maxEdge: number = MAX_PHOTO_EDGE,
+): { width: number; height: number } {
+  const scale = photoScale(width, height, maxEdge)
+  return { width: Math.round(width * scale), height: Math.round(height * scale) }
+}
