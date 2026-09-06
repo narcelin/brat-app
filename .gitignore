@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Auto-installed by Vercel marketplace integrations
+.agents/
+.claude/
+skills-lock.json
