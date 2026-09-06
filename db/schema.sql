@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   objective_id INTEGER NOT NULL REFERENCES objectives(id) ON DELETE CASCADE,
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   media_url    TEXT NOT NULL,
+  media_pathname TEXT,
   media_type   TEXT NOT NULL CHECK (media_type IN ('photo', 'video')),
   duration_seconds  REAL,
   trim_start        REAL,
