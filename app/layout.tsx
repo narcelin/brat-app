@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { AppHeader } from '../components/AppHeader'
 import { ServiceWorker } from '../components/ServiceWorker'
 import './globals.css'
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en">
         <body>
+          <AppHeader />
           {children}
           <ServiceWorker />
         </body>

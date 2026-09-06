@@ -5,17 +5,9 @@ fixed yet. Severity is my assessment, not the reporter's.
 
 ---
 
-## 1. No way back from an objective page — **Important**
+## 1. ~~No way back from an objective page~~ — **FIXED 2026-09-06**
 
-The objective page has a "← This week" link at the bottom, below the capture UI,
-so on a phone it sits under the fold and reads as a dead end. There is no
-persistent header or back affordance.
-
-Fix direction: a real header on every screen, not a link at the bottom of a
-scrolling page. This overlaps with issue 5 — both are the same missing piece of
-navigation chrome.
-
----
+Fixed together with issue 5 as one `AppHeader` — see below.
 
 ## 2. Submission shows "Not submitted" after a successful upload — **Critical**
 
@@ -75,16 +67,30 @@ updates the name whenever Clerk's value changes, so **it self-heals on that
 player's next sign-in**, provided their Clerk account now has a username set.
 Nothing to do unless it is still "Brat" after signing in again.
 
-## 5. No sign-out and no home navigation — **Important**
+## 5. ~~No sign-out and no home navigation~~ — **FIXED 2026-09-06**
 
-Once signed in there is no way to sign out, and no persistent way back to This
-Week. Clerk's `<UserButton />` gives sign-out and account management in one
-component and is the cheap fix.
+Issues 1 and 5 were the same defect: the app had no navigation chrome at all.
+Fixed with a single sticky `components/AppHeader.tsx` rendered from the root
+layout on every route:
 
-Same root cause as issue 1: the app has no navigation chrome at all. Both should
-be fixed together as one small header component rather than separately.
+- The **brats** wordmark links home. The app is only ever two levels deep
+  (This Week → an objective), so home *is* the back action and a separate back
+  button would be redundant.
+- Clerk's `<UserButton />` supplies sign-out and account management, gated on
+  being signed in.
+- Sticky, so both stay reachable from anywhere without scrolling — the original
+  complaint was really that a link at the bottom of a long capture page is
+  invisible on a phone.
 
----
+Two things changed along the way:
+
+- The bottom "← This week" link on the objective page was removed as redundant.
+- The signed-out home page no longer repeats "brats" as its heading, since the
+  header now shows it; it leads with "Brat Olympics" and the sign-in prompt.
+
+Note for future Clerk work: `<SignedIn>` does **not** exist in `@clerk/nextjs`
+Core 3. The replacement is `<Show when="signed-in">`. The build fails loudly if
+you reach for the old name.
 
 ## Notes carried over from the Phase 1 review
 

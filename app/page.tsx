@@ -12,8 +12,8 @@ export default async function ThisWeekPage() {
     return (
       <main className="screen">
         <header>
-          <h1>brats</h1>
-          <p className="sub">Brat Olympics</p>
+          <h1>Brat Olympics</h1>
+          <p className="sub">Sign in to see this week&apos;s objectives.</p>
         </header>
         <SignInButton mode="modal">
           <button className="btn">Sign in</button>
@@ -28,8 +28,8 @@ export default async function ThisWeekPage() {
     return (
       <main className="screen">
         <header>
-          <h1>brats</h1>
-          <p className="sub">No week has dropped yet.</p>
+          <h1>no week yet</h1>
+          <p className="sub">Nothing has dropped. Check back soon.</p>
         </header>
       </main>
     )

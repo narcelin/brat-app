@@ -21,7 +21,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  padding: calc(env(safe-area-inset-top) + 32px) 20px calc(env(safe-area-inset-bottom) + 24px);
+  padding: 20px 20px calc(env(safe-area-inset-bottom) + 24px);
 }
 h1 { margin: 0; font-size: 56px; letter-spacing: -.04em; font-weight: 800; }
 .sub { margin: 4px 0 0; opacity: .6; }
@@ -64,3 +64,27 @@ footer { margin-top: auto; }
 
 .preview { width: 100%; border-radius: 14px; border: 2px solid var(--ink); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
 .capture { display: flex; flex-direction: column; gap: 12px; }
+
+/* Persistent navigation chrome. Sticky so home and sign-out stay reachable
+   from anywhere without scrolling — on a phone a link at the bottom of a
+   scrolling capture page reads as a dead end. */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 12px) 20px 12px;
+  background: var(--bg);
+  border-bottom: 2px solid var(--ink);
+}
+.wordmark {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.wordmark:active { opacity: .6; }

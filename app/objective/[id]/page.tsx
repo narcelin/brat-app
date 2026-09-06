@@ -39,8 +39,6 @@ export default async function ObjectivePage({
       ) : (
         <p className="status">Submissions are closed for this week.</p>
       )}
-
-      <a className="btn ghost" href="/">← This week</a>
     </main>
   )
 }
