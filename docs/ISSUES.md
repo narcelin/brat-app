@@ -98,32 +98,38 @@ Note for future Clerk work: `<SignedIn>` does **not** exist in `@clerk/nextjs`
 Core 3. The replacement is `<Show when="signed-in">`. The build fails loudly if
 you reach for the old name.
 
-## 6. Trim screen never plays the recording back — **OPEN**, reported 2026-09-07
+## 6. ~~Trim screen never plays the recording back~~ — **FIXED 2026-09-07**
 
-After recording, the trim screen shows a still frame and a filmstrip but you
-cannot watch the video. You are asked to choose in and out points without ever
-seeing the thing you are trimming.
+The preview had no `controls` and nothing ever called `play()`, so it only
+showed a seeked still: you picked in and out points without watching the clip.
 
-The preview element in `components/Trimmer.tsx:242` has no `controls`, is
-`muted`, and is only ever seeked — once on load (the `seededRef` effect) and
-again while a handle is dragged. Nothing calls `play()`, so the frame is the
-only thing you get.
+There is now a play/pause control that plays **only the selected range** —
+starts at `range.start`, stops at `range.end`, and resets so pressing play
+again replays the selection. Native `controls` were deliberately not added:
+the filmstrip is the scrubber, and a second scrubber would let you drag
+outside the selection.
 
-Wanted: play the recording back on the trim screen, scoped to the selected
-range — press play and it should run from `range.start`, stop at `range.end`,
-and loop or reset rather than run past the out point. That is what makes the
-handles meaningful.
+The three recorded decisions were honoured:
 
-Worth deciding when this is picked up:
+- **Audio unmutes on play.** The element stays `muted` in markup so the
+  seed-on-load effect can still seek it on iOS without a gesture; playback is
+  started by a real tap, which is allowed to have sound.
+- **The filmstrip is untouched.** Frame grabbing still runs on its own
+  detached element, so it never competes for `currentTime`.
+- **Dragging a handle pauses playback**, so the playhead and the drag cannot
+  fight over `currentTime`.
 
-- **Audio.** The preview is `muted`, which is what lets it autoplay-seek on
-  iOS without a gesture. Playback started from a real tap can be unmuted, and
-  probably should be — you cannot judge a clip you cannot hear.
-- **Preview vs filmstrip.** Both read the same `src`; the filmstrip already
-  runs on a detached element specifically to avoid fighting the preview for
-  `currentTime`. Playback must not resume the frame grab's seeking.
-- **Dragging while playing.** `move()` writes `currentTime` on every pointer
-  move. Simplest correct behaviour is to pause on `pointerdown`.
+The end-stop reuses `clampPlaybackTime` from `lib/media/playback-clamp.ts`
+rather than adding a second range check — the same tested function that keeps
+voters from scrubbing into trimmed-out footage on the ballot. A new
+`playStartPosition` decides where play begins when the playhead sits outside
+the selection.
+
+**Not verified on a real device.** The sandbox could not produce a genuine
+multi-second recording (`MediaRecorder` throttles when the page is treated as
+hidden), so the component was driven through real DOM and pointer events
+against a stubbed media element instead. That proves the wiring, not that a
+clip is audible and visible on an iPhone. Worth a spot-check.
 
 ## Notes carried over from the Phase 1 review
 
