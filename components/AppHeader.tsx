@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Show, UserButton } from '@clerk/nextjs'
 import { currentPlayer } from '../lib/auth/current-player'
+import { isAdmin } from '../lib/auth/is-admin'
 import { seedFromPlayerId } from '../lib/domain/avatar'
 import { Avatar } from './Avatar'
 
@@ -13,6 +14,10 @@ import { Avatar } from './Avatar'
  *  safe-area inset stay consistent; only the account control is gated. */
 export async function AppHeader() {
   const player = await currentPlayer()
+  // Checked server-side, same as the page itself. Non-admins never see the
+  // link and would 404 on the route anyway.
+  const admin = player ? await isAdmin() : false
+
   return (
     <header className="appbar">
       <Link href="/" className="wordmark" aria-label="Brapids — this week">
@@ -25,6 +30,11 @@ export async function AppHeader() {
         />
       </Link>
       <Show when="signed-in">
+        {admin && (
+          <Link href="/admin" className="header-admin" aria-label="Admin controls">
+            admin
+          </Link>
+        )}
         {player && (
           <Link href="/me" className="header-face" aria-label="Pick your avatar">
             <Avatar seed={player.avatarSeed ?? seedFromPlayerId(player.id)} />
