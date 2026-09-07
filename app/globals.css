@@ -434,3 +434,27 @@ footer { margin-top: auto; }
 .sheet-review-actions { display: flex; flex-direction: column; gap: 10px; }
 .sheet-review .status { color: #fff; }
 .sheet-review label.status { color: #fff; }
+
+/* Buttons in the sheet sit on black, where the page palette inverts: the
+   default .btn is a near-black fill with a near-black border, and .btn.ghost
+   draws its text and border in --ink. Both vanish against the sheet. */
+.sheet .btn {
+  background: var(--bg);
+  color: var(--ink);
+  border-color: var(--bg);
+  font-weight: 700;
+  text-align: center;
+}
+.sheet .btn.ghost {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, .55);
+  font-weight: 600;
+}
+.sheet .btn:disabled { opacity: .45; }
+
+/* .status is dimmed for a light background; on black it needs to come back up. */
+.sheet .status, .sheet label.status { color: #fff; opacity: .8; }
+
+/* The shutter is its own control and must not inherit the above. */
+.sheet .shutter { background: transparent; border-color: #fff; }
