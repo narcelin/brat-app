@@ -171,6 +171,7 @@ footer { margin-top: auto; }
 }
 
 .header-face { display: block; line-height: 0; }
+.header-face svg { pointer-events: none; }
 .header-face svg {
   width: 34px;
   height: 34px;

@@ -43,8 +43,15 @@ export function AvatarPicker({
       setError('Could not save that one. Try again.')
       return
     }
+    if (redirectTo) {
+      // A hard navigation, not router.push: the header lives in the root
+      // layout, and Next does not re-render layouts on a client-side
+      // navigation — so the avatar up there would keep showing the old face
+      // until something forced a full load.
+      window.location.assign(redirectTo)
+      return
+    }
     router.refresh()
-    if (redirectTo) router.push(redirectTo)
   }
 
   return (

@@ -36,12 +36,15 @@ export async function AppHeader() {
           </Link>
         )}
         {player && (
-          <Link href="/me" className="header-face" aria-label="Pick your avatar">
+          <span className="header-face" aria-hidden="true">
             <Avatar seed={player.avatarSeed ?? seedFromPlayerId(player.id)} />
-          </Link>
+          </span>
         )}
         <UserButton
           appearance={{ elements: { avatarBox: { width: 34, height: 34 } } }}
+          // Folds the roller into Clerk's own account menu rather than having
+          // two account controls side by side in the header.
+          customMenuItems={[{ label: 'Change my brat', href: '/me' }]}
         />
       </Show>
     </header>
