@@ -25,6 +25,9 @@ export async function POST(request: Request) {
   if (!week || week.state !== 'VOTING') {
     return NextResponse.json({ error: 'Voting is not open' }, { status: 403 })
   }
+  if (!week.objectives.some((o) => o.id === objectiveId)) {
+    return NextResponse.json({ error: 'Objective is not in the current week' }, { status: 400 })
+  }
 
   const ballot = await getBallot(week.id, player.id)
   const objective = ballot.find((o) => o.objectiveId === objectiveId)
