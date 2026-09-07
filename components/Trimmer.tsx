@@ -92,9 +92,20 @@ export function Trimmer({
   const frames = useFilmstrip(src, duration)
   const result = validateTrim(range.start, range.end, duration)
 
+  // Held in a ref, and deliberately NOT an effect dependency. Callers pass an
+  // inline arrow, so its identity changes on every render of the parent; with
+  // it in the dependency list this effect re-fires, calls setState on the
+  // parent, and loops until React tears the tree down — which looked like
+  // "stopping the recording does nothing", because the review screen crashed
+  // the moment it mounted.
+  const onChangeRef = useRef(onChange)
   useEffect(() => {
-    onChange(range.start, range.end, validateTrim(range.start, range.end, duration).ok)
-  }, [range, duration, onChange])
+    onChangeRef.current = onChange
+  })
+
+  useEffect(() => {
+    onChangeRef.current(range.start, range.end, validateTrim(range.start, range.end, duration).ok)
+  }, [range, duration])
 
   const move = useCallback(
     (clientX: number, handle: 'start' | 'end') => {

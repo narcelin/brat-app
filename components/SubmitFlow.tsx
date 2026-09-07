@@ -2,7 +2,7 @@
 
 import { upload } from '@vercel/blob/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Capture } from './Capture'
 import { Trimmer } from './Trimmer'
 import { chooseSaveStrategy } from '../lib/media/save'
@@ -37,6 +37,12 @@ export function SubmitFlow({
   // dragging the trim slider) does not mint a fresh blob URL each time — and
   // revoked below whenever `file` changes or the component unmounts, so URLs
   // never outlive the file they point to.
+  // Stable identity so the Trimmer's reporting effect has nothing to react to.
+  const handleTrimChange = useCallback(
+    (start: number, end: number, valid: boolean) => setTrim({ start, end, valid }),
+    [],
+  )
+
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
 
   useEffect(() => {
@@ -171,7 +177,7 @@ export function SubmitFlow({
         <Trimmer
           src={previewUrl}
           duration={duration}
-          onChange={(start, end, valid) => setTrim({ start, end, valid })}
+          onChange={handleTrimChange}
         />
       ) : (
         previewUrl && <img src={previewUrl} alt="Your proof" className="preview" />
