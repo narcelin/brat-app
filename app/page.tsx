@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { currentPlayer } from '../lib/auth/current-player'
 import { getCurrentWeek } from '../lib/db/queries'
 import { canSubmit } from '../lib/domain/submission-rules'
@@ -21,6 +22,10 @@ export default async function ThisWeekPage() {
       </main>
     )
   }
+
+  // First run: a player with no avatar appears on the roster as a face they
+  // never chose, so rolling one comes before anything else.
+  if (player.avatarSeed === null) redirect('/welcome')
 
   const week = await getCurrentWeek(player.id)
 

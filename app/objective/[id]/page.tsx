@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { currentPlayer } from '../../../lib/auth/current-player'
 import { getCurrentWeek, getObjectiveRoster } from '../../../lib/db/queries'
 import { canSubmit } from '../../../lib/domain/submission-rules'
@@ -18,6 +18,8 @@ export default async function ObjectivePage({
 
   const player = await currentPlayer()
   if (!player) notFound()
+
+  if (player.avatarSeed === null) redirect('/welcome')
 
   const week = await getCurrentWeek(player.id)
   const objective = week?.objectives.find((o) => o.id === objectiveId)

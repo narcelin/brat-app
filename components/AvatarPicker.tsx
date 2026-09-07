@@ -8,9 +8,15 @@ import { randomSeed, seedFromPlayerId } from '../lib/domain/avatar'
 export function AvatarPicker({
   playerId,
   current,
+  redirectTo,
+  saveLabel,
 }: {
   playerId: string
   current: number | null
+  /** Where to go once saved. Used by onboarding, which must move the player
+   *  on; the settings screen stays put. */
+  redirectTo?: string
+  saveLabel?: string
 }) {
   const router = useRouter()
   const saved = current ?? seedFromPlayerId(playerId)
@@ -38,6 +44,7 @@ export function AvatarPicker({
       return
     }
     router.refresh()
+    if (redirectTo) router.push(redirectTo)
   }
 
   return (
@@ -51,8 +58,15 @@ export function AvatarPicker({
       <button className="btn" onClick={() => setSeed(randomSeed())} disabled={busy}>
         Roll again
       </button>
-      <button className="btn ghost" onClick={keep} disabled={busy || !dirty}>
-        {busy ? 'Saving…' : dirty ? 'Keep this one' : 'This is your brat'}
+      <button
+        className="btn ghost"
+        onClick={keep}
+        // Onboarding must be completable without rolling: the face shown on
+        // arrival is already a real one, and refusing to save it would trap a
+        // player who happens to like it.
+        disabled={busy || (!dirty && !redirectTo)}
+      >
+        {busy ? 'Saving…' : saveLabel ?? (dirty ? 'Keep this one' : 'This is your brat')}
       </button>
     </div>
   )
