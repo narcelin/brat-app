@@ -64,3 +64,33 @@ export function photoTargetSize(
   const scale = photoScale(width, height, maxEdge)
   return { width: Math.round(width * scale), height: Math.round(height * scale) }
 }
+
+/** Whether in-app capture is even possible here.
+ *
+ *  `navigator.mediaDevices` is undefined in a non-secure context and in some
+ *  iOS home-screen (standalone) web apps. Reaching straight for
+ *  `.getUserMedia` there throws synchronously, before any promise exists, so a
+ *  `.catch()` never sees it — the effect dies silently and the UI waits for a
+ *  camera that will never start. */
+export function hasCameraApi(nav: {
+  mediaDevices?: { getUserMedia?: unknown }
+}): boolean {
+  return typeof nav.mediaDevices?.getUserMedia === 'function'
+}
+
+/** Running from the home screen rather than a browser tab. iOS restricts
+ *  camera access here on some versions, and the remedy is different: open the
+ *  site in Safari, or use the native camera. */
+export interface StandaloneWindow {
+  matchMedia?: (q: string) => { matches: boolean }
+  // `navigator.standalone` is Safari-only and absent from the DOM types.
+  navigator?: { standalone?: boolean } | Navigator
+}
+
+export function isStandalone(win: StandaloneWindow): boolean {
+  const nav = win.navigator as { standalone?: boolean } | undefined
+  return (
+    win.matchMedia?.('(display-mode: standalone)').matches === true ||
+    nav?.standalone === true
+  )
+}

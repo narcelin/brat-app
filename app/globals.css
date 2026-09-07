@@ -546,3 +546,27 @@ footer { margin-top: auto; }
 
 .trim-readout { text-align: center; }
 .trim-readout b { font-weight: 700; }
+
+/* Native-camera fallback: shown when in-app capture cannot run at all. */
+.sheet-native {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 24px calc(env(safe-area-inset-bottom) + 24px);
+  text-align: center;
+}
+.sheet-native-lead {
+  margin: 0;
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+}
+.sheet-native-note {
+  margin: 0 0 8px;
+  color: #fff;
+  opacity: .75;
+  font-size: 14px;
+  line-height: 1.5;
+}

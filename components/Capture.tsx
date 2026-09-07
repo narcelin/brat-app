@@ -8,6 +8,8 @@ import {
   canStartRecording,
   canStopRecording,
   isVideoFrameReady,
+  hasCameraApi,
+  isStandalone,
 } from '../lib/media/recorder'
 import { MAX_RECORDING_SECONDS } from '../lib/domain/trim'
 
@@ -31,6 +33,10 @@ export function Capture({
   const [needsTap, setNeedsTap] = useState(false)
   const [live, setLive] = useState(false)
   const [mode, setMode] = useState<'photo' | 'video'>('video')
+  // Set when in-app capture is impossible here and the native camera is the
+  // only route left.
+  const [useNativeCamera, setUseNativeCamera] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -39,22 +45,57 @@ export function Capture({
     // making `recorder.onstop` a permanent no-op under `next dev`.
     mountedRef.current = true
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' }, audio: true })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop())
-          return
-        }
-        streamRef.current = stream
-        // Held in state as well as a ref: the element may not be mounted when
-        // this resolves, and a ref write alone would never re-run the attach.
-        setStream(stream)
-      })
-      .catch(() => setError('Camera access denied. Enable it in Settings to submit proof.'))
+    // Feature-detected rather than called blind: reaching for .getUserMedia
+    // when mediaDevices is undefined throws synchronously, which no .catch()
+    // below would ever see.
+    if (!hasCameraApi(navigator)) {
+      setUseNativeCamera(true)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    // A hung permission prompt resolves neither way on some iOS builds, and
+    // "Starting camera…" forever tells the player nothing they can act on.
+    const timeout = setTimeout(() => {
+      if (!cancelled) setUseNativeCamera(true)
+    }, 12000)
+
+    try {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'environment' }, audio: true })
+        .then((stream) => {
+          clearTimeout(timeout)
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop())
+            return
+          }
+          streamRef.current = stream
+          // Held in state as well as a ref: the element may not be mounted
+          // when this resolves, and a ref write alone would never re-run the
+          // attach.
+          setStream(stream)
+        })
+        .catch((err: unknown) => {
+          clearTimeout(timeout)
+          if (cancelled) return
+          // A denial is the player's to fix; anything else means in-app
+          // capture is not going to work here, so offer the native camera.
+          const denied = err instanceof DOMException && err.name === 'NotAllowedError'
+          if (denied) {
+            setError('Camera access denied. Enable it in Settings to submit proof.')
+          } else {
+            setUseNativeCamera(true)
+          }
+        })
+    } catch {
+      clearTimeout(timeout)
+      setUseNativeCamera(true)
+    }
 
     return () => {
       cancelled = true
+      clearTimeout(timeout)
       mountedRef.current = false
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
@@ -159,6 +200,45 @@ export function Capture({
     setElapsed(0)
   }
 
+  /** The native camera returns a finished file, so duration has to be read
+   *  back off it rather than timed while recording. */
+  async function onNativeFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the same file be picked twice in a row
+    if (!file) return
+
+    const kind = file.type.startsWith('video/') ? 'video' : 'photo'
+    if (kind === 'photo') {
+      onCaptured(file, 'photo', 0)
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    try {
+      const seconds = await new Promise<number>((resolve, reject) => {
+        const probe = document.createElement('video')
+        probe.preload = 'metadata'
+        probe.onloadedmetadata = () => resolve(probe.duration)
+        probe.onerror = () => reject(new Error('unreadable'))
+        probe.src = url
+      })
+
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        setError('Could not read that video. Try recording a shorter one.')
+        return
+      }
+      if (seconds > MAX_RECORDING_SECONDS) {
+        setError(`That clip is ${Math.round(seconds)}s. Keep it under ${MAX_RECORDING_SECONDS}s.`)
+        return
+      }
+      onCaptured(file, 'video', seconds)
+    } catch {
+      setError('Could not read that video. Try again.')
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
   function takePhoto() {
     const video = videoRef.current
     if (!video) return
@@ -187,6 +267,36 @@ export function Capture({
       },
       'image/jpeg',
       0.85,
+    )
+  }
+
+  if (useNativeCamera && !error) {
+    const standalone = typeof window !== 'undefined' && isStandalone(window)
+    return (
+      <div className="sheet-body">
+        <button className="sheet-close" onClick={onCancel} aria-label="Close camera">
+          ✕
+        </button>
+        <div className="sheet-native">
+          <p className="sheet-native-lead">The in-app camera cannot run here.</p>
+          <p className="sheet-native-note">
+            {standalone
+              ? 'iOS blocks it in apps opened from the home screen. Use your normal camera below, or open brats.anico.dev in Safari to record in the app.'
+              : 'Use your normal camera instead — the proof still counts the same.'}
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            capture="environment"
+            onChange={onNativeFile}
+            hidden
+          />
+          <button className="btn" onClick={() => fileInputRef.current?.click()}>
+            Open camera
+          </button>
+        </div>
+      </div>
     )
   }
 

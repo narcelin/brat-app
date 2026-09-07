@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  hasCameraApi,
+  isStandalone,
   pickMimeType,
   MAX_PHOTO_EDGE,
   photoScale,
@@ -123,5 +125,39 @@ describe('isVideoFrameReady', () => {
 
   it('is ready once both dimensions are populated', () => {
     expect(isVideoFrameReady(640, 480)).toBe(true)
+  })
+})
+
+describe('hasCameraApi', () => {
+  it('is true when getUserMedia exists', () => {
+    expect(hasCameraApi({ mediaDevices: { getUserMedia: () => {} } })).toBe(true)
+  })
+
+  it('is false when mediaDevices is missing entirely', () => {
+    // The iOS standalone / insecure-context case. Reaching for .getUserMedia
+    // here throws synchronously and no catch block sees it.
+    expect(hasCameraApi({})).toBe(false)
+  })
+
+  it('is false when mediaDevices exists but getUserMedia does not', () => {
+    expect(hasCameraApi({ mediaDevices: {} })).toBe(false)
+  })
+})
+
+describe('isStandalone', () => {
+  it('detects the iOS home-screen flag', () => {
+    expect(isStandalone({ navigator: { standalone: true } })).toBe(true)
+  })
+
+  it('detects the standalone display mode', () => {
+    expect(isStandalone({ matchMedia: () => ({ matches: true }) })).toBe(true)
+  })
+
+  it('is false in an ordinary browser tab', () => {
+    expect(isStandalone({ matchMedia: () => ({ matches: false }), navigator: {} })).toBe(false)
+  })
+
+  it('survives a window without matchMedia', () => {
+    expect(isStandalone({})).toBe(false)
   })
 })
