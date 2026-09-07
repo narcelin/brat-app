@@ -89,4 +89,15 @@ describe('buildStandings', () => {
     expect(standings.find((s) => s.userId === 'alice')!.golds).toBe(1)
     expect(standings.find((s) => s.userId === 'bob')!.golds).toBe(1)
   })
+
+  it('breaks a full tie (points, golds, display name) deterministically on userId', () => {
+    const tiedPlayers = [
+      { id: 'zed', display_name: 'Sam', avatar_seed: 1 },
+      { id: 'amy', display_name: 'Sam', avatar_seed: 2 },
+    ]
+    const standings = buildStandings([], tiedPlayers)
+    // Both players are tied on every prior key (points 0, golds 0, same
+    // displayName), so only the userId tiebreak decides the order.
+    expect(standings.map((s) => s.userId)).toEqual(['amy', 'zed'])
+  })
 })

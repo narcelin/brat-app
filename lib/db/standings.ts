@@ -63,13 +63,30 @@ export function buildStandings(
     }
   }
 
+  // displayName has no uniqueness constraint, so two players tied on points,
+  // golds, and display name would otherwise sort in whatever order the Map
+  // happened to iterate — unstable across renders. userId is always unique,
+  // so it's the final tiebreak that guarantees a deterministic order.
   return [...standings.values()].sort(
-    (a, b) => b.points - a.points || b.golds - a.golds || a.displayName.localeCompare(b.displayName),
+    (a, b) =>
+      b.points - a.points ||
+      b.golds - a.golds ||
+      a.displayName.localeCompare(b.displayName) ||
+      a.userId.localeCompare(b.userId),
   )
 }
 
 /** Only weeks that have actually finished voting count toward the table — a
- *  week still being voted on would make the standings jump around mid-ballot. */
+ *  week still being voted on would make the standings jump around mid-ballot.
+ *
+ *  A forced state always beats the clock, in either direction — see
+ *  `effectiveWeekState` in `lib/domain/week-state.ts`, the app's single
+ *  authority on week state. If an admin forces a week to VOTING to keep
+ *  polls open past its scheduled `voting_closes_at`, the clock alone must
+ *  not count that week toward the table just because it's past its
+ *  timestamp: that would publish a result for a week people are still
+ *  voting on. So the clock branch only applies when `forced_state IS NULL`;
+ *  do not simplify this back to a plain `OR` on `voting_closes_at`. */
 export async function getStandings(seasonId: number, now: Date = new Date()): Promise<Standing[]> {
   const players = (await sql`
     SELECT id, display_name, avatar_seed FROM users
@@ -91,7 +108,8 @@ export async function getStandings(seasonId: number, now: Date = new Date()): Pr
     JOIN submissions s ON s.objective_id = o.id
     LEFT JOIN votes v ON v.objective_id = o.id
     LEFT JOIN ratifications r ON r.objective_id = o.id
-    WHERE w.forced_state = 'CLOSED' OR w.voting_closes_at <= ${now}
+    WHERE w.forced_state = 'CLOSED'
+       OR (w.forced_state IS NULL AND w.voting_closes_at <= ${now})
   `) as {
     objective_id: number
     tier: Tier
