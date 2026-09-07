@@ -19,6 +19,7 @@ export function BallotCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(objective.myRanking.length > 0)
+  const [myRatification, setMyRatification] = useState(objective.myRatification)
 
   const entrantIds = objective.entrants.map((e) => e.userId)
   const check = validateBallot(ranking, entrantIds, viewerId)
@@ -68,7 +69,7 @@ export function BallotCard({
       setError(body?.error ?? 'Could not save that.')
       return
     }
-    setSaved(true)
+    setMyRatification(approved)
     router.refresh()
   }
 
@@ -101,15 +102,23 @@ export function BallotCard({
           ) : (
             <>
               <p className="status">Nobody else entered. Did they actually do it?</p>
-              <button className="btn" disabled={busy} onClick={() => ratify(true)}>
+              <button
+                className={`btn${myRatification === true ? '' : ' ghost'}`}
+                disabled={busy}
+                onClick={() => ratify(true)}
+              >
                 Yes, they did it
               </button>
-              <button className="btn ghost" disabled={busy} onClick={() => ratify(false)}>
+              <button
+                className={`btn${myRatification === false ? '' : ' ghost'}`}
+                disabled={busy}
+                onClick={() => ratify(false)}
+              >
                 No, they did not
               </button>
-              {objective.myRatification !== null && (
+              {myRatification !== null && (
                 <p className="status">
-                  You said {objective.myRatification ? 'yes' : 'no'}.
+                  You said {myRatification ? 'yes' : 'no'}.
                 </p>
               )}
             </>
