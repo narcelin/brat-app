@@ -694,13 +694,16 @@ export function scoreObjective(
   // and everyone who entered takes effort points.
   const anyVotes = [...scores.values()].some((score) => score > 0)
 
-  // Descending distinct scores. Ties share a place and the next places are
-  // skipped: two golds means no silver.
-  const ordered = [...new Set([...scores.values()])].sort((a, b) => b - a)
+  const allScores = [...scores.values()]
 
   return entrantIds.map((userId) => {
     const score = scores.get(userId) ?? 0
-    const rank = ordered.indexOf(score) + 1
+    // Competition ranking: your place is one more than the number of people
+    // who beat you. Ties therefore share a place and skip the next — two
+    // golds means no silver, and the next distinct score takes bronze.
+    // (Indexing into the distinct sorted scores would give DENSE ranking,
+    // 1-1-2, which is not the agreed rule.)
+    const rank = allScores.filter((other) => other > score).length + 1
     const place = anyVotes && score > 0 && rank <= places ? rank : null
 
     return { userId, place, points: medalPoints(tier, place), bordaScore: score }
@@ -730,7 +733,17 @@ Expected: PASS, 14 tests
 
 - [ ] **Step 5: Prove the tie rule with a mutation**
 
-Temporarily change `const rank = ordered.indexOf(score) + 1` to `const rank = entrantIds.indexOf(userId) + 1`, run the suite, and confirm the shared-place test fails. Restore it. Report both outputs — a tie rule you have not seen fail is not evidence of anything.
+Temporarily change the rank line to dense ranking:
+
+```ts
+const rank = [...new Set(allScores)].sort((a, b) => b - a).indexOf(score) + 1
+```
+
+Run the suite and confirm the shared-place test fails — it should report the
+third player as place 2 instead of 3. Restore the competition-ranking line and
+confirm it passes. Report both outputs: dense versus competition ranking is
+exactly the bug this test exists to catch, and a tie rule you have not seen
+fail is not evidence of anything.
 
 - [ ] **Step 6: Commit**
 
