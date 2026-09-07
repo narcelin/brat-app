@@ -4,6 +4,7 @@ import {
   submissionPathname,
   submissionPathnamePrefix,
   isOwnSubmissionPathname,
+  supersededPathname,
   type SubmissionWeek,
 } from '../../lib/domain/submission-request'
 import { MAX_UPLOAD_BYTES } from '../../lib/domain/trim'
@@ -267,5 +268,36 @@ describe('submission pathnames', () => {
     expect(isOwnSubmissionPathname('submissions/7/user_a/', 7, 'user_a')).toBe(false)
     expect(isOwnSubmissionPathname(null, 7, 'user_a')).toBe(false)
     expect(isOwnSubmissionPathname(undefined, 7, 'user_a')).toBe(false)
+  })
+})
+
+describe('supersededPathname', () => {
+  const OLD = 'submissions/7/user_a/proof-abc123.mp4'
+  const NEW = 'submissions/7/user_a/proof-def456.mp4'
+
+  it('returns the replaced blob so it can be cleaned up', () => {
+    expect(supersededPathname(OLD, NEW)).toBe(OLD)
+  })
+
+  it('returns null on a first submission, when nothing was replaced', () => {
+    expect(supersededPathname(null, NEW)).toBeNull()
+  })
+
+  // THE DANGEROUS CASE. `addRandomSuffix` currently makes every upload a new
+  // key, but if that is ever turned off a replacement reuses the same key —
+  // and deleting it would destroy the media the row now points at, leaving a
+  // submission that looks fine in the database and 404s for every viewer.
+  it('never returns the pathname the row now points at', () => {
+    expect(supersededPathname(NEW, NEW)).toBeNull()
+  })
+
+  it('ignores an empty or blank previous pathname rather than calling del on it', () => {
+    expect(supersededPathname('', NEW)).toBeNull()
+    expect(supersededPathname('   ', NEW)).toBeNull()
+  })
+
+  it('ignores a non-string previous pathname', () => {
+    expect(supersededPathname(undefined, NEW)).toBeNull()
+    expect(supersededPathname(42 as unknown as string, NEW)).toBeNull()
   })
 })

@@ -5,6 +5,7 @@ import { getCurrentWeek } from '../../../lib/db/queries'
 import { sql } from '../../../lib/db/client'
 import {
   isOwnSubmissionPathname,
+  supersededPathname,
   validateSubmissionRequest,
 } from '../../../lib/domain/submission-request'
 
@@ -85,9 +86,18 @@ export async function POST(request: Request) {
 
   const { kind, trimStart, trimEnd, duration } = check.value
 
-  let rows: { id: number }[]
+  let rows: { id: number; previous_pathname: string | null }[]
   try {
+    // The CTE reads the row as it stood before this statement — every
+    // sub-statement in a WITH sees the same snapshot — so `previous` is the
+    // key we are about to stop referencing, not the one we are writing.
+    // RETURNING alone cannot give us this: on an upsert it yields the new row.
     rows = (await sql`
+      WITH previous AS (
+        SELECT media_pathname
+        FROM submissions
+        WHERE objective_id = ${objectiveId} AND user_id = ${player.id}
+      )
       INSERT INTO submissions
         (objective_id, user_id, media_url, media_pathname, media_type, duration_seconds, trim_start, trim_end)
       VALUES
@@ -100,12 +110,19 @@ export async function POST(request: Request) {
             trim_start = EXCLUDED.trim_start,
             trim_end = EXCLUDED.trim_end,
             created_at = now()
-      RETURNING id
-    `) as { id: number }[]
+      RETURNING id, (SELECT media_pathname FROM previous) AS previous_pathname
+    `) as { id: number; previous_pathname: string | null }[]
   } catch (err) {
     await discard(blob.pathname)
     throw err
   }
+
+  // Only after the row is committed, so a cleanup failure can never cost us
+  // a submission that already succeeded — and so we never delete media the
+  // row still points at. Awaited rather than fired and forgotten: the
+  // function may be frozen the moment the response is returned.
+  const orphan = supersededPathname(rows[0].previous_pathname, blob.pathname)
+  if (orphan) await discard(orphan)
 
   return NextResponse.json({ id: rows[0].id })
 }

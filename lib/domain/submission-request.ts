@@ -169,3 +169,25 @@ export function validateSubmissionRequest(
     value: { objectiveId, kind, contentType, sizeBytes, trimStart, trimEnd, duration },
   }
 }
+
+/** Which blob, if any, a replacement has left orphaned.
+ *
+ *  Replacing proof repoints the row at a new key and abandons the old one:
+ *  `addRandomSuffix` means every upload lands somewhere new, so without this
+ *  every replacement leaks a file that nothing references and nobody can
+ *  reach — paid for in storage and, being a private store, never reclaimed.
+ *
+ *  The equality check is the whole point of this being a function. If
+ *  `addRandomSuffix` is ever turned off, a replacement reuses the same key,
+ *  and deleting "the old one" would delete the media the row now points at —
+ *  a submission that looks intact in the database and 404s for every viewer.
+ *  Returning null is always safe; returning the current pathname never is. */
+export function supersededPathname(
+  previous: string | null | undefined,
+  current: string,
+): string | null {
+  if (typeof previous !== 'string') return null
+  if (previous.trim() === '') return null
+  if (previous === current) return null
+  return previous
+}

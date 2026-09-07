@@ -63,7 +63,9 @@ Proves people will judge. This is where the game becomes a game.
 ## Phase 2 prerequisites carried over from Phase 1
 
 - [ ] Point `test:integration` at a separate Neon branch — dev and production currently share one database
-- [ ] Delete the previous blob when a submission is replaced
+- [x] Delete the previous blob when a submission is replaced — `addRandomSuffix`
+      puts every upload on a new key, so each replacement orphaned a file that
+      nothing referenced and nobody could reach
 
 ## Phase 3 — Retention
 
