@@ -8,8 +8,9 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "node --env-file=.env.development.local ./node_modules/.bin/vitest run tests/integration",
-    "db:apply": "node --env-file=.env.development.local db/apply.mjs db/schema.sql db/seed.sql"
+    "test:integration": "node --env-file=.env.test.local ./node_modules/.bin/vitest run --config vitest.integration.config.ts",
+    "db:apply": "node --env-file=.env.development.local db/apply.mjs db/schema.sql db/seed.sql",
+    "db:apply:test": "node --env-file=.env.test.local db/apply.mjs db/schema.sql db/test-branch.sql"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.1",

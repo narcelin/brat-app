@@ -62,7 +62,9 @@ Proves people will judge. This is where the game becomes a game.
 
 ## Phase 2 prerequisites carried over from Phase 1
 
-- [ ] Point `test:integration` at a separate Neon branch — dev and production currently share one database
+- [x] Point `test:integration` at a separate Neon branch — guarded by a
+      `test_branch_marker` row the database itself must carry, so a wrong env
+      file fails closed rather than writing to production. See `docs/TESTING.md`
 - [x] Delete the previous blob when a submission is replaced — `addRandomSuffix`
       puts every upload on a new key, so each replacement orphaned a file that
       nothing referenced and nobody could reach
