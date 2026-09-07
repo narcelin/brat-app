@@ -25,10 +25,21 @@ function call(pathname: string) {
 }
 
 describe('GET /api/media/[...pathname]', () => {
+  // A blob that looks exactly like a real one. Every test starts with the
+  // blob read SUCCEEDING, so a 404 can only ever come from a decision the
+  // route made — never from a missing mock. Without this the "refused" case
+  // 404s through the `if (!blob)` branch and the reveal check could be
+  // deleted outright with the suite still green.
+  const realBlob = () => ({
+    stream: new ReadableStream(),
+    headers: new Headers({ 'content-type': 'video/mp4' }),
+  })
+
   beforeEach(() => {
     vi.mocked(currentPlayer).mockReset()
     vi.mocked(findMediaOwner).mockReset()
     vi.mocked(get).mockReset()
+    vi.mocked(get).mockResolvedValue(realBlob() as never)
   })
 
   it('reports an unknown path and a refused-but-existing path identically', async () => {
@@ -65,12 +76,23 @@ describe('GET /api/media/[...pathname]', () => {
       weekState: 'SUBMITTING',
       mediaPathname: 'submissions/1/bob/proof.mp4',
     })
-    vi.mocked(get).mockResolvedValue({
-      stream: new ReadableStream(),
-      headers: new Headers({ 'content-type': 'video/mp4' }),
-    } as never)
 
     const res = await call('submissions/1/bob/proof.mp4')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toBe('private, no-store')
+  })
+
+  it('lets a non-owner through once the week reveals (VOTING)', async () => {
+    // The actual reveal behaviour: bob is not alice, but submissions have
+    // closed, so alice's proof is now everyone's to watch and judge.
+    vi.mocked(currentPlayer).mockResolvedValue(player)
+    vi.mocked(findMediaOwner).mockResolvedValue({
+      userId: 'alice',
+      weekState: 'VOTING',
+      mediaPathname: 'submissions/1/alice/proof.mp4',
+    })
+
+    const res = await call('submissions/1/alice/proof.mp4')
     expect(res.status).toBe(200)
     expect(res.headers.get('Cache-Control')).toBe('private, no-store')
   })

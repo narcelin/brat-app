@@ -10,9 +10,15 @@ import type { BallotObjective } from '../lib/db/queries'
 export function BallotCard({
   objective,
   viewerId,
+  readOnly = false,
 }: {
   objective: BallotObjective
   viewerId: string
+  /** A settled week. /api/vote and /api/ratify both refuse once a week is
+   *  CLOSED, so offering Save and ratify buttons there is offering buttons
+   *  that can only ever produce an error. Show the proof and what the viewer
+   *  said, and nothing they can press. */
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [ranking, setRanking] = useState<string[]>(objective.myRanking)
@@ -97,7 +103,15 @@ export function BallotCard({
             />
           </div>
 
-          {lone.userId === viewerId ? (
+          {readOnly ? (
+            <p className="status">
+              {lone.userId === viewerId
+                ? 'Your own entry. This week is settled.'
+                : myRatification === null
+                  ? 'This week is settled — you did not weigh in on this one.'
+                  : `This week is settled. You said ${myRatification ? 'yes' : 'no'}.`}
+            </p>
+          ) : lone.userId === viewerId ? (
             <p className="status">Your own entry — the others decide this one.</p>
           ) : (
             <>
@@ -127,7 +141,9 @@ export function BallotCard({
       ) : (
         <div className="stack">
           <p className="status">
-            Tap in order — best first. {check.ok ? 'Ready to save.' : check.reason}
+            {readOnly
+              ? 'This week is settled — voting is over.'
+              : `Tap in order — best first. ${check.ok ? 'Ready to save.' : check.reason}`}
           </p>
 
           {objective.entrants.map((entrant) => {
@@ -146,25 +162,37 @@ export function BallotCard({
                   trimStart={entrant.trimStart}
                   trimEnd={entrant.trimEnd}
                 />
-                <button
-                  className={`btn${position === -1 ? ' ghost' : ''}`}
-                  disabled={busy || isSelf}
-                  onClick={() => toggle(entrant.userId)}
-                >
-                  {isSelf
-                    ? 'You cannot rank yourself'
-                    : position === -1
-                      ? 'Rank this one'
-                      : `Ranked #${position + 1} — tap to remove`}
-                </button>
+                {readOnly ? (
+                  <p className="status">
+                    {isSelf
+                      ? 'Your entry.'
+                      : position === -1
+                        ? 'You did not rank this one.'
+                        : `You ranked this #${position + 1}.`}
+                  </p>
+                ) : (
+                  <button
+                    className={`btn${position === -1 ? ' ghost' : ''}`}
+                    disabled={busy || isSelf}
+                    onClick={() => toggle(entrant.userId)}
+                  >
+                    {isSelf
+                      ? 'You cannot rank yourself'
+                      : position === -1
+                        ? 'Rank this one'
+                        : `Ranked #${position + 1} — tap to remove`}
+                  </button>
+                )}
               </div>
             )
           })}
 
           {error && <p className="status admin-error">{error}</p>}
-          <button className="btn" disabled={busy || !check.ok} onClick={save}>
-            {busy ? 'Saving…' : saved ? 'Saved — change it?' : 'Save this vote'}
-          </button>
+          {!readOnly && (
+            <button className="btn" disabled={busy || !check.ok} onClick={save}>
+              {busy ? 'Saving…' : saved ? 'Saved — change it?' : 'Save this vote'}
+            </button>
+          )}
         </div>
       )}
 

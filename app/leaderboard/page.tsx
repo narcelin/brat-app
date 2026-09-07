@@ -17,6 +17,17 @@ export default async function LeaderboardPage() {
 
   const standings = await getStandings(season.id)
 
+  // Competition ranking, the same rule the objectives themselves use: your
+  // position is one more than the number of players who beat you, so a tie
+  // shares a number and the next distinct score skips one. Rendering
+  // `index + 1` showed two players on identical points as 1 and 2, which
+  // contradicts the tie rule the rest of the branch implements. "Beats you"
+  // means the same thing here as in buildStandings' sort: more points, or
+  // equal points and more golds. The later tiebreaks in that sort (display
+  // name, then user id) only fix the row order; they do not break a tie.
+  const beats = (a: (typeof standings)[number], b: (typeof standings)[number]) =>
+    a.points > b.points || (a.points === b.points && a.golds > b.golds)
+
   return (
     <main className="screen">
       <header>
@@ -25,9 +36,11 @@ export default async function LeaderboardPage() {
       </header>
 
       <ol className="standings">
-        {standings.map((standing, index) => (
+        {standings.map((standing) => (
           <li key={standing.userId} className={standing.userId === player.id ? 'is-you' : undefined}>
-            <span className="standings-rank">{index + 1}</span>
+            <span className="standings-rank">
+              {standings.filter((other) => beats(other, standing)).length + 1}
+            </span>
             <Avatar seed={standing.avatarSeed} className="roster-face" />
             <span className="standings-name">{standing.displayName}</span>
             <span className="standings-medals">

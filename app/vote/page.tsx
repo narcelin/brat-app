@@ -40,7 +40,14 @@ export default async function VotePage() {
         <p className="status">Nobody posted anything this week.</p>
       ) : (
         ballot.map((objective) => (
-          <BallotCard key={objective.objectiveId} objective={objective} viewerId={player.id} />
+          // A closed week is read-only: /api/vote and /api/ratify both 403
+          // once the week settles, so live buttons here could only ever fail.
+          <BallotCard
+            key={objective.objectiveId}
+            objective={objective}
+            viewerId={player.id}
+            readOnly={week.state === 'CLOSED'}
+          />
         ))
       )}
     </main>
