@@ -110,3 +110,26 @@ These were known at merge and are not new reports. Full detail in
   body, leaving the row pointing at dead media.
 - `handleUpload`'s token cannot constrain `access`, so Phase 2 must not treat
   `access: 'private'` as the reveal gate.
+
+---
+
+## Closed 2026-09-07 — test-infrastructure hazards
+
+Both found by the Phase 2 whole-branch review, both fixed. Recorded because the
+first one bit once before it was understood.
+
+**A privacy assertion reached across test suites.** `privacy.test.ts` asserted
+that a serialised roster contained no substring `"media"` — but the roster query
+selects `FROM users` unscoped, so it was really asserting that *no user row
+anywhere in the shared database* contained that word. Another suite's fixture
+used `itest_media_*` ids and the two collided. It now asserts on the key set of
+a roster entry, which says what it actually means: the roster carries no media
+field. The two assertions checking this suite's own fixture secrets were kept —
+they are correctly scoped.
+
+**The integration fixtures could wedge themselves permanently.** Both created a
+season with a plain INSERT against a UNIQUE name, with teardown that swallowed
+failures. One failed teardown would have left the season behind, and every
+subsequent run would then die in `beforeAll` with no way to clean up, because
+the id was never assigned. Both now delete by name first, so a crashed run heals
+itself on the next one.
