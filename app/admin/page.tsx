@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { currentPlayer } from '../../lib/auth/current-player'
 import { isAdmin } from '../../lib/auth/is-admin'
 import { getCurrentWeek } from '../../lib/db/queries'
+import { getTurnout } from '../../lib/db/turnout'
 import { AdminWeekControls } from '../../components/AdminWeekControls'
 import { LocalTime } from '../../components/LocalTime'
 
@@ -19,6 +20,8 @@ export default async function AdminPage() {
       </main>
     )
   }
+
+  const turnout = await getTurnout(week.id)
 
   return (
     <main className="screen">
@@ -48,6 +51,20 @@ export default async function AdminPage() {
         naturalState={week.naturalState}
         forcedState={week.forcedState}
       />
+
+      {turnout.length > 0 && (
+        <section className="admin-state">
+          <p className="roster-head">Voting so far</p>
+          <ul className="turnout">
+            {turnout.map((t) => (
+              <li key={t.objectiveId}>
+                <span>{t.title}</span>
+                <b>{t.voters}/{t.eligible}</b>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }

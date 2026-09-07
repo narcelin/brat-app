@@ -658,3 +658,14 @@ footer { margin-top: auto; }
 .standings-name { flex: 1; font-weight: 600; }
 .standings-medals { font-size: 13px; opacity: .75; white-space: nowrap; }
 .standings-points { font-size: 18px; min-width: 44px; text-align: right; }
+
+/* --- Admin turnout --------------------------------------------------------- */
+
+.turnout { margin: 8px 0 0; padding: 0; list-style: none; }
+.turnout li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .18);
+}
