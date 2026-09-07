@@ -1,4 +1,11 @@
+/* Declares the page works in either scheme, which is what makes Clerk's
+   modals follow the device: its default theme reads the CSS color-scheme
+   property rather than needing a theme package or a media query. Our own
+   palette is fixed brat green and sets its colours explicitly below, so the
+   app itself looks the same either way — only the native chrome Clerk and
+   the browser draw (modals, form controls, scrollbars) follows the device. */
 :root {
+  color-scheme: light dark;
   --bg: #8ACE00;
   --ink: #0b0b0b;
   --btn: #0b0b0b;
