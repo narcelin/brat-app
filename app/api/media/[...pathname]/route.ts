@@ -10,29 +10,46 @@ export async function GET(
 ) {
   const player = await currentPlayer()
   if (!player) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'Not signed in' },
+      { status: 401, headers: { 'Cache-Control': 'private, no-store' } },
+    )
   }
 
   const { pathname: segments } = await params
   const pathname = segments.join('/')
 
+  const notFound = () =>
+    NextResponse.json(
+      { error: 'Not found' },
+      { status: 404, headers: { 'Cache-Control': 'private, no-store' } },
+    )
+
   const owner = await findMediaOwner(pathname)
-  // 404 rather than 403 for an unknown path: whether a given blob exists is
-  // not something an unauthorised caller should be able to probe.
+  // A truly unknown pathname and a real submission the viewer isn't allowed
+  // to see yet both report 404 "Not found", identically. Submission paths
+  // are predictable (submissions/{objectiveId}/{playerId}/...), so if a
+  // refused-but-existing blob answered differently (e.g. 403) a signed-in
+  // player could enumerate paths and use the status code as an existence
+  // oracle to learn who has submitted before the reveal — even though only
+  // the response *shape* would leak that, since the roster already shows it
+  // openly. The reveal rule (canViewSubmission) still gates the bytes below;
+  // only the two "you don't get this" cases have been made indistinguishable.
   if (!owner) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return notFound()
   }
 
   // The reveal rule, applied to the bytes themselves. Phase 1 keeps other
   // players' media out of the page; without this a player could stream a
-  // rival's proof mid-week straight from the API.
+  // rival's proof mid-week straight from the API. Reported identically to
+  // an unknown path (see above).
   if (!canViewSubmission(owner.weekState, owner.userId, player.id)) {
-    return NextResponse.json({ error: 'Not yet' }, { status: 403 })
+    return notFound()
   }
 
   const blob = await get(owner.mediaPathname, { access: 'private' })
   if (!blob) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return notFound()
   }
 
   return new NextResponse(blob.stream, {
