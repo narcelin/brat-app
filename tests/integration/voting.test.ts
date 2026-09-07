@@ -30,6 +30,18 @@ describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', ()
     // is_active = false: seasons_one_active only allows one active season,
     // and getStandings takes a season id directly, so an inactive fixture
     // season is scored the same as an active one without risking a clash.
+    //
+    // seasons.name is UNIQUE. afterAll swallows delete failures with
+    // .catch(() => {}), so a season from a prior run whose teardown failed
+    // (or whose process was killed after beforeAll) can survive and make a
+    // plain INSERT here throw forever — and since seasonId is never
+    // assigned when the insert throws, afterAll has nothing to delete
+    // either, so the suite could never recover on its own. Deleting any
+    // stray season by name first makes this self-healing: the FK cascade
+    // takes its weeks, objectives, submissions, votes and ratifications
+    // with it, so every run starts from a clean slate regardless of how
+    // the previous one ended.
+    await sql`DELETE FROM seasons WHERE name = ${SEASON_NAME}`
     const [season] = (await sql`
       INSERT INTO seasons (name, is_active) VALUES (${SEASON_NAME}, false)
       RETURNING id

@@ -112,7 +112,19 @@ describe.skipIf(!process.env.DATABASE_URL)('submission privacy (integration)', (
     const serialized = JSON.stringify(roster)
     expect(serialized).not.toContain(ALICE_MEDIA_URL)
     expect(serialized).not.toContain(ALICE_MEDIA_PATHNAME)
-    expect(serialized).not.toContain('media')
+
+    // Assert on the *shape* of a roster entry rather than scanning the
+    // serialized roster for the substring 'media': that substring scan
+    // reaches across every user row in the shared database (this query
+    // selects FROM users with no scoping), so any future display name or
+    // avatar URL containing "media" anywhere would fail this suite for
+    // reasons that have nothing to do with it. Checking the key set instead
+    // pins down exactly what this test is trying to guarantee — that the
+    // roster shape carries no media field at all — without depending on
+    // any other row in the database.
+    expect(Object.keys(alice!).sort()).toEqual(
+      ['avatarSeed', 'avatarUrl', 'displayName', 'hasSubmitted', 'userId'].sort(),
+    )
   })
 
   it('shows bob as not having posted', async () => {

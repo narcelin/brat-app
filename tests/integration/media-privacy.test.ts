@@ -54,6 +54,18 @@ describe.skipIf(!process.env.DATABASE_URL)('media privacy (integration)', () => 
     // is_active = false: the seasons_one_active partial unique index allows
     // only one active season, and nothing here needs the fixture to be the
     // active one — findMediaOwner reaches the week through the submission.
+    //
+    // seasons.name is UNIQUE. afterAll swallows delete failures with
+    // .catch(() => {}), so a season from a prior run whose teardown failed
+    // (or whose process was killed after beforeAll) can survive and make a
+    // plain INSERT here throw forever — and since seasonId is never
+    // assigned when the insert throws, afterAll has nothing to delete
+    // either, so the suite could never recover on its own. Deleting any
+    // stray season by name first makes this self-healing: the FK cascade
+    // takes its weeks, objectives, submissions, votes and ratifications
+    // with it, so every run starts from a clean slate regardless of how
+    // the previous one ended.
+    await sql`DELETE FROM seasons WHERE name = ${SEASON_NAME}`
     const [season] = (await sql`
       INSERT INTO seasons (name, is_active) VALUES (${SEASON_NAME}, false)
       RETURNING id
