@@ -3,29 +3,68 @@ import { sql } from '../../lib/db/client'
 import { getStandings } from '../../lib/db/standings'
 import { medalsFor } from '../../lib/domain/tiers'
 
+// This suite creates its own season, week and objectives and never reads or
+// writes a row belonging to the real, live season. The live game may be
+// mid-week while this runs (real players, real submissions), so nothing here
+// may touch a week that isn't owned by this fixture — see task-10 fix report.
 describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', () => {
   const A = 'itest_vote_a'
   const B = 'itest_vote_b'
   const C = 'itest_vote_c'
-  let objectiveId = 0
+  const SEASON_NAME = 'itest_season'
+
   let seasonId = 0
-  let tier: 'easy' | 'hard' | 'unhinged' = 'hard'
+  let weekId = 0
+  let objectiveId = 0
+  let soloObjectiveId = 0
+  const tier: 'easy' | 'hard' | 'unhinged' = 'hard'
+  const soloTier: 'easy' | 'hard' | 'unhinged' = 'easy'
 
   beforeAll(async () => {
-    const [objective] = (await sql`
-      SELECT o.id, o.tier, w.season_id
-      FROM objectives o JOIN weeks w ON w.id = o.week_id
-      ORDER BY o.id LIMIT 1
-    `) as { id: number; tier: typeof tier; season_id: number }[]
-    objectiveId = objective.id
-    seasonId = objective.season_id
-    tier = objective.tier
-
     await sql`
       INSERT INTO users (id, display_name)
       VALUES (${A}, 'Vote A'), (${B}, 'Vote B'), (${C}, 'Vote C')
       ON CONFLICT (id) DO NOTHING
     `
+
+    // is_active = false: seasons_one_active only allows one active season,
+    // and getStandings takes a season id directly, so an inactive fixture
+    // season is scored the same as an active one without risking a clash.
+    const [season] = (await sql`
+      INSERT INTO seasons (name, is_active) VALUES (${SEASON_NAME}, false)
+      RETURNING id
+    `) as { id: number }[]
+    seasonId = season.id
+
+    // Timestamps are all in the past so the natural (clock) state is CLOSED;
+    // individual tests still override with forced_state as needed. Must
+    // satisfy drops_at < submissions_close_at < voting_closes_at.
+    const [week] = (await sql`
+      INSERT INTO weeks (season_id, number, drops_at, submissions_close_at, voting_closes_at)
+      VALUES (
+        ${seasonId}, 1,
+        now() - interval '10 days',
+        now() - interval '9 days',
+        now() - interval '8 days'
+      )
+      RETURNING id
+    `) as { id: number }[]
+    weekId = week.id
+
+    const [objective] = (await sql`
+      INSERT INTO objectives (week_id, title, tier)
+      VALUES (${weekId}, 'itest ranked objective', ${tier})
+      RETURNING id
+    `) as { id: number }[]
+    objectiveId = objective.id
+
+    const [soloObjective] = (await sql`
+      INSERT INTO objectives (week_id, title, tier)
+      VALUES (${weekId}, 'itest ratify objective', ${soloTier})
+      RETURNING id
+    `) as { id: number }[]
+    soloObjectiveId = soloObjective.id
+
     for (const user of [A, B]) {
       await sql`
         INSERT INTO submissions (objective_id, user_id, media_url, media_pathname, media_type)
@@ -34,26 +73,34 @@ describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', ()
       `
     }
     // C ranks A above B.
-    await sql`DELETE FROM votes WHERE voter_id = ${C} AND objective_id = ${objectiveId}`
     await sql`
       INSERT INTO votes (objective_id, voter_id, submission_user_id, place)
       VALUES (${objectiveId}, ${C}, ${A}, 1), (${objectiveId}, ${C}, ${B}, 2)
     `
     // Force the week closed so it counts toward standings.
-    await sql`
-      UPDATE weeks SET forced_state = 'CLOSED'
-      WHERE id = (SELECT week_id FROM objectives WHERE id = ${objectiveId})
-    `
+    await sql`UPDATE weeks SET forced_state = 'CLOSED' WHERE id = ${weekId}`
   })
 
   afterAll(async () => {
+    // Deleting the season cascades to weeks -> objectives -> submissions,
+    // votes and ratifications, but delete defensively (children first) so a
+    // partial failure mid-run still leaves the database clean.
     await sql`DELETE FROM votes WHERE voter_id IN (${A}, ${B}, ${C})`.catch(() => {})
+    await sql`DELETE FROM ratifications WHERE voter_id IN (${A}, ${B}, ${C})`.catch(() => {})
     await sql`DELETE FROM submissions WHERE user_id IN (${A}, ${B}, ${C})`.catch(() => {})
+    if (objectiveId) {
+      await sql`DELETE FROM objectives WHERE id = ${objectiveId}`.catch(() => {})
+    }
+    if (soloObjectiveId) {
+      await sql`DELETE FROM objectives WHERE id = ${soloObjectiveId}`.catch(() => {})
+    }
+    if (weekId) {
+      await sql`DELETE FROM weeks WHERE id = ${weekId}`.catch(() => {})
+    }
+    if (seasonId) {
+      await sql`DELETE FROM seasons WHERE id = ${seasonId}`.catch(() => {})
+    }
     await sql`DELETE FROM users WHERE id IN (${A}, ${B}, ${C})`.catch(() => {})
-    await sql`
-      UPDATE weeks SET forced_state = NULL
-      WHERE id = (SELECT week_id FROM objectives WHERE id = ${objectiveId})
-    `.catch(() => {})
   })
 
   it('turns real votes into real points', async () => {
@@ -82,67 +129,39 @@ describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', ()
     // objective — so every approval was silently dropped and a lone entry
     // could never be ratified. Unit tests could not see this; only a real
     // join can.
-    const [solo] = (await sql`
-      SELECT o.id, o.tier, w.season_id
-      FROM objectives o JOIN weeks w ON w.id = o.week_id
-      WHERE o.id <> ${objectiveId}
-      ORDER BY o.id LIMIT 1
-    `) as { id: number; tier: typeof tier; season_id: number }[]
+    try {
+      await sql`
+        INSERT INTO submissions (objective_id, user_id, media_url, media_pathname, media_type)
+        VALUES (${soloObjectiveId}, ${A}, 'https://itest.invalid/solo', ${'p/solo-' + A}, 'photo')
+        ON CONFLICT (objective_id, user_id) DO NOTHING
+      `
+      await sql`
+        INSERT INTO ratifications (objective_id, voter_id, approved)
+        VALUES (${soloObjectiveId}, ${B}, true), (${soloObjectiveId}, ${C}, true)
+      `
 
-    await sql`
-      INSERT INTO submissions (objective_id, user_id, media_url, media_pathname, media_type)
-      VALUES (${solo.id}, ${A}, 'https://itest.invalid/solo', ${'p/solo-' + A}, 'photo')
-      ON CONFLICT (objective_id, user_id) DO NOTHING
-    `
-    await sql`DELETE FROM ratifications WHERE objective_id = ${solo.id}`
-    await sql`
-      INSERT INTO ratifications (objective_id, voter_id, approved)
-      VALUES (${solo.id}, ${B}, true), (${solo.id}, ${C}, true)
-    `
-    await sql`
-      UPDATE weeks SET forced_state = 'CLOSED'
-      WHERE id = (SELECT week_id FROM objectives WHERE id = ${solo.id})
-    `
-
-    const standings = await getStandings(solo.season_id)
-    const a = standings.find((s) => s.userId === A)!
-    expect(a.golds).toBeGreaterThanOrEqual(1)
-
-    await sql`DELETE FROM ratifications WHERE objective_id = ${solo.id}`
-    await sql`DELETE FROM submissions WHERE objective_id = ${solo.id} AND user_id = ${A}`
-    await sql`
-      UPDATE weeks SET forced_state = NULL
-      WHERE id = (SELECT week_id FROM objectives WHERE id = ${solo.id})
-    `
+      const standings = await getStandings(seasonId)
+      const a = standings.find((s) => s.userId === A)!
+      // A already has one gold from the ranked objective (previous test), so
+      // this must be an exact count, not >=1 — otherwise the assertion would
+      // pass even if the ratified solo entry were never scored at all.
+      expect(a.golds).toBe(2)
+      expect(a.points).toBe(medalsFor(tier).first + medalsFor(soloTier).first)
+    } finally {
+      await sql`DELETE FROM ratifications WHERE objective_id = ${soloObjectiveId}`.catch(() => {})
+      await sql`
+        DELETE FROM submissions WHERE objective_id = ${soloObjectiveId} AND user_id = ${A}
+      `.catch(() => {})
+    }
   })
 
   it('excludes a week an admin has forced back open, even once the clock has passed', async () => {
     // Regression: the WHERE clause used to let the clock override a forced
     // state, so a week deliberately kept open for voting was published anyway.
-    const weekId = (await sql`
-      SELECT week_id FROM objectives WHERE id = ${objectiveId}
-    `)[0].week_id as number
-
-    // The live season's week 1 has submissions_close_at in the future (the
-    // schema's CHECK requires drops_at < submissions_close_at <
-    // voting_closes_at), so pushing only voting_closes_at into the past
-    // would itself violate that constraint. Push all three back together —
-    // unrelated to the forced_state/clock behavior under test — and restore
-    // the originals afterward regardless of outcome.
-    const [original] = (await sql`
-      SELECT drops_at, submissions_close_at, voting_closes_at
-      FROM weeks WHERE id = ${weekId}
-    `) as { drops_at: Date; submissions_close_at: Date; voting_closes_at: Date }[]
-
+    // The fixture week's timestamps are already in the past, so no timestamp
+    // rewriting is needed here at all — only the forced_state changes.
     try {
-      await sql`
-        UPDATE weeks
-        SET forced_state = 'VOTING',
-            drops_at = now() - interval '3 days',
-            submissions_close_at = now() - interval '2 days',
-            voting_closes_at = now() - interval '1 day'
-        WHERE id = ${weekId}
-      `
+      await sql`UPDATE weeks SET forced_state = 'VOTING' WHERE id = ${weekId}`
       const whileOpen = await getStandings(seasonId)
       expect(whileOpen.find((s) => s.userId === A)?.points ?? 0).toBe(0)
 
@@ -150,13 +169,7 @@ describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', ()
       const afterClose = await getStandings(seasonId)
       expect(afterClose.find((s) => s.userId === A)!.points).toBeGreaterThan(0)
     } finally {
-      await sql`
-        UPDATE weeks
-        SET drops_at = ${original.drops_at},
-            submissions_close_at = ${original.submissions_close_at},
-            voting_closes_at = ${original.voting_closes_at}
-        WHERE id = ${weekId}
-      `
+      await sql`UPDATE weeks SET forced_state = 'CLOSED' WHERE id = ${weekId}`.catch(() => {})
     }
   })
 
