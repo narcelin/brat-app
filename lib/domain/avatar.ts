@@ -73,6 +73,19 @@ export function featuresFromSeed(seed: number): AvatarFeatures {
   }
 }
 
+/** Reads a seed off a database row.
+ *
+ *  Postgres returns BIGINT as a string, so a conversion is needed — but
+ *  `Number(null)` is 0, and 0 is a perfectly valid seed. Coercing first meant
+ *  a null column came back as seed 0: the app believed every player had
+ *  chosen an avatar, so onboarding never triggered and everyone without one
+ *  shared the same face. Emptiness is checked before conversion, never after. */
+export function parseSeed(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = typeof value === 'number' ? value : Number(value)
+  return isSeed(n) ? n : null
+}
+
 export function randomSeed(): number {
   return Math.floor(Math.random() * (MAX_SEED + 1))
 }

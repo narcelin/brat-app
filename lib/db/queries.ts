@@ -3,7 +3,7 @@ import type { Tier } from '../domain/tiers'
 import {
   effectiveWeekState, type ForcedState, type WeekState, type WeekWindows,
 } from '../domain/week-state'
-import { isSeed, seedFromPlayerId } from '../domain/avatar'
+import { parseSeed, seedFromPlayerId } from '../domain/avatar'
 
 export interface WeekRow {
   week_id: number
@@ -163,7 +163,7 @@ export function shapeRoster(rows: RosterRow[]): RosterEntry[] {
       displayName: r.display_name,
       avatarUrl: r.avatar_url,
       // Everyone shows a face, rolled or not, so no row renders blank.
-      avatarSeed: isSeed(Number(r.avatar_seed)) ? Number(r.avatar_seed) : seedFromPlayerId(r.user_id),
+      avatarSeed: parseSeed(r.avatar_seed) ?? seedFromPlayerId(r.user_id),
       hasSubmitted: r.has_submitted,
     }))
     .sort((a, b) => {

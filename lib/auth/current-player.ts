@@ -1,6 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { sql } from '../db/client'
-import { isSeed } from '../domain/avatar'
+import { parseSeed } from '../domain/avatar'
 
 export interface Player {
   id: string
@@ -63,6 +63,6 @@ export async function currentPlayer(): Promise<Player | null> {
 
   return {
     ...player,
-    avatarSeed: isSeed(Number(current?.avatar_seed)) ? Number(current!.avatar_seed) : null,
+    avatarSeed: parseSeed(current?.avatar_seed),
   }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   EYE_STYLES, EYEWEAR, HAIR_STYLES, MAX_SEED, MOUTHS, SHIRTS, SKINS,
-  featuresFromSeed, isSeed, randomSeed, seedFromPlayerId,
+  featuresFromSeed, isSeed, parseSeed, randomSeed, seedFromPlayerId,
 } from '../../lib/domain/avatar'
 
 describe('isSeed', () => {
@@ -96,5 +96,35 @@ describe('seedFromPlayerId', () => {
   it('spreads different players apart', () => {
     const seen = new Set(Array.from({ length: 100 }, (_, i) => seedFromPlayerId(`user_${i}`)))
     expect(seen.size).toBeGreaterThan(90)
+  })
+})
+
+describe('parseSeed', () => {
+  it('reads a seed that Postgres returned as a string', () => {
+    expect(parseSeed('1178878437')).toBe(1178878437)
+  })
+
+  it('reads a numeric seed', () => {
+    expect(parseSeed(42)).toBe(42)
+  })
+
+  it('returns null for a null column rather than 0', () => {
+    // Number(null) is 0, and 0 is a valid seed — coercing first made every
+    // player look like they had already chosen an avatar.
+    expect(parseSeed(null)).toBeNull()
+    expect(parseSeed(undefined)).toBeNull()
+    expect(parseSeed('')).toBeNull()
+  })
+
+  it('keeps a genuine zero seed, which is distinct from absence', () => {
+    expect(parseSeed(0)).toBe(0)
+    expect(parseSeed('0')).toBe(0)
+  })
+
+  it('returns null for values outside the seed range', () => {
+    expect(parseSeed(-1)).toBeNull()
+    expect(parseSeed(MAX_SEED + 1)).toBeNull()
+    expect(parseSeed('banana')).toBeNull()
+    expect(parseSeed(1.5)).toBeNull()
   })
 })
