@@ -98,6 +98,33 @@ Note for future Clerk work: `<SignedIn>` does **not** exist in `@clerk/nextjs`
 Core 3. The replacement is `<Show when="signed-in">`. The build fails loudly if
 you reach for the old name.
 
+## 6. Trim screen never plays the recording back — **OPEN**, reported 2026-09-07
+
+After recording, the trim screen shows a still frame and a filmstrip but you
+cannot watch the video. You are asked to choose in and out points without ever
+seeing the thing you are trimming.
+
+The preview element in `components/Trimmer.tsx:242` has no `controls`, is
+`muted`, and is only ever seeked — once on load (the `seededRef` effect) and
+again while a handle is dragged. Nothing calls `play()`, so the frame is the
+only thing you get.
+
+Wanted: play the recording back on the trim screen, scoped to the selected
+range — press play and it should run from `range.start`, stop at `range.end`,
+and loop or reset rather than run past the out point. That is what makes the
+handles meaningful.
+
+Worth deciding when this is picked up:
+
+- **Audio.** The preview is `muted`, which is what lets it autoplay-seek on
+  iOS without a gesture. Playback started from a real tap can be unmuted, and
+  probably should be — you cannot judge a clip you cannot hear.
+- **Preview vs filmstrip.** Both read the same `src`; the filmstrip already
+  runs on a detached element specifically to avoid fighting the preview for
+  `currentTime`. Playback must not resume the frame grab's seeking.
+- **Dragging while playing.** `move()` writes `currentTime` on every pointer
+  move. Simplest correct behaviour is to pause on `pointerdown`.
+
 ## Notes carried over from the Phase 1 review
 
 These were known at merge and are not new reports. Full detail in
