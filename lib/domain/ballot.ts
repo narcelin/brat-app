@@ -28,6 +28,16 @@ export function validateBallot(
     return { ok: false, reason: 'Nobody entered this objective' }
   }
 
+  // A single entrant is a ratify vote (see isRatifyObjective), never a
+  // ranked ballot — there is nobody to rank them against. Callers are
+  // expected to branch on isRatifyObjective before reaching here, but this
+  // module is the last pure gate before a vote reaches the database, and the
+  // project's self-vote rule already teaches us that one layer remembering
+  // to check is not enough. Reject it here too, independent of any caller.
+  if (isRatifyObjective(entrantIds.length)) {
+    return { ok: false, reason: 'This objective is ratified, not ranked' }
+  }
+
   if (ranking.includes(voterId)) {
     return { ok: false, reason: 'You cannot vote for yourself' }
   }

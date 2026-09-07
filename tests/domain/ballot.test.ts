@@ -68,6 +68,12 @@ describe('validateBallot', () => {
     expect(validateBallot(['alice', 'bob'], ['alice', 'bob'], 'zoe')).toEqual({ ok: true })
   })
 
+  it('rejects a ranked ballot on a single-entrant objective', () => {
+    const result = validateBallot(['alice'], ['alice'], 'zoe')
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toMatch(/ratif/i)
+  })
+
   it('lets an entrant rank everyone except themselves', () => {
     // Alice entered a three-way race, so she ranks the other two.
     expect(validateBallot(['bob', 'carol'], ['alice', 'bob', 'carol'], 'alice')).toEqual({ ok: true })
