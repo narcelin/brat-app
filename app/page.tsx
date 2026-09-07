@@ -49,6 +49,9 @@ export default async function ThisWeekPage() {
         state={week.state}
         closesAt={week.windows.submissionsCloseAt}
       />
+      {week.state === 'VOTING' && (
+        <a className="btn" href="/vote">Vote now — submissions are closed</a>
+      )}
       <div className="stack">
         {week.objectives.map((o) => (
           <ObjectiveCard

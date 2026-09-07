@@ -621,3 +621,24 @@ footer { margin-top: auto; }
   border-radius: 999px;
   white-space: nowrap;
 }
+
+/* --- Ballot -------------------------------------------------------------- */
+
+.ballot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+}
+.ballot h2 { margin: 6px 0 0; font-size: 26px; letter-spacing: -.02em; }
+.ballot-entry { display: flex; flex-direction: column; gap: 10px; }
+.ballot-who { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.proof {
+  width: 100%;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  background: #000;
+  display: block;
+}
