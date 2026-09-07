@@ -91,6 +91,29 @@ Proves people will judge. This is where the game becomes a game.
 - [ ] Per-challenge video borders
 - [ ] Special objectives for players abroad
 
+## Possible changes
+
+Not committed and not bugs. Ideas worth considering, kept here so they are not
+lost. Nothing in this section is scheduled.
+
+- **Pick a place when voting, instead of ranking by tap order.** Today "Rank
+  this one" appends to a list, so the first entry you tap is #1 and the second
+  is #2; fixing a mistake means removing an entry and re-tapping the rest in
+  order (`toggle()` in `components/BallotCard.tsx`). The alternative is a menu
+  of the places still on offer, so you can hand someone #2 directly.
+
+  How many places to show is **already decided in code** — `lib/domain/ballot.ts`
+  computes `expected = min(placesAwarded(entrants), rankable)`, capped at
+  `MAX_PLACES = 3` and reduced by one when the voter is an entrant. Four-plus
+  entrants offer 1, 2, 3; two entrants offer 1, 2; one entrant is a ratify vote
+  with no ranking. A menu should read that number, not hardcode three.
+
+  Open questions if it is ever picked up: whether choosing a taken place swaps
+  the two entries or is simply blocked, and how you clear a pick once "tap it
+  again" is no longer the gesture. `validateBallot` already gates Save on the
+  ballot being exactly `expected` long, so this is a `BallotCard` change with
+  no server work.
+
 ## Held in reserve
 
 Fixes for voting load, to apply only if Phase 2 shows voting decaying:
