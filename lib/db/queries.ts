@@ -21,6 +21,21 @@ export interface WeekRow {
   tier: Tier
   submission_id: number | null
   submission_user_id: string | null
+  media_pathname: string | null
+  media_type: 'photo' | 'video' | null
+  trim_start: number | null
+  trim_end: number | null
+}
+
+/** Enough to play the proof back. Carried only for the viewer's own
+ *  submission, so a player can check what they posted before deciding to
+ *  replace it — without seeing anyone else's. */
+export interface MySubmission {
+  id: number
+  mediaPathname: string
+  mediaType: 'photo' | 'video'
+  trimStart: number | null
+  trimEnd: number | null
 }
 
 export interface ObjectiveWithMine {
@@ -30,7 +45,7 @@ export interface ObjectiveWithMine {
   tier: Tier
   /** The viewer's own submission, if any. Other players' submissions are
    *  never included here — they are not visible until reveal. */
-  mySubmissionId: number | null
+  mySubmission: MySubmission | null
 }
 
 export interface CurrentWeek {
@@ -43,6 +58,27 @@ export interface CurrentWeek {
   forcedState: ForcedState | null
   state: WeekState
   objectives: ObjectiveWithMine[]
+}
+
+/** Attaches the viewer's own proof to an objective — and nobody else's.
+ *
+ *  The ownership check is repeated here even though `fetchWeekRows` already
+ *  restricts the join to the viewer: this function also shapes rows from
+ *  tests and any future caller, and a media pathname handed to the wrong
+ *  player would defeat the hidden-until-reveal rule outright. A row missing
+ *  its media columns (a legacy submission predating `media_pathname`) yields
+ *  null rather than a player with an unplayable proof. */
+export function shapeMine(row: WeekRow, viewerId: string): MySubmission | null {
+  if (row.submission_id === null) return null
+  if (row.submission_user_id !== viewerId) return null
+  if (row.media_pathname === null || row.media_type === null) return null
+  return {
+    id: row.submission_id,
+    mediaPathname: row.media_pathname,
+    mediaType: row.media_type,
+    trimStart: row.trim_start,
+    trimEnd: row.trim_end,
+  }
 }
 
 export function shapeCurrentWeek(
@@ -69,7 +105,7 @@ export function shapeCurrentWeek(
       title: row.title,
       description: row.description,
       tier: row.tier,
-      mySubmissionId: row.submission_user_id === viewerId ? row.submission_id : null,
+      mySubmission: shapeMine(row, viewerId),
     }))
 
   return {
@@ -118,7 +154,11 @@ export async function fetchWeekRows(viewerId: string, now: Date): Promise<WeekRo
       o.description,
       o.tier,
       s.id      AS submission_id,
-      s.user_id AS submission_user_id
+      s.user_id AS submission_user_id,
+      s.media_pathname,
+      s.media_type,
+      s.trim_start,
+      s.trim_end
     FROM weeks w
     LEFT JOIN objectives o ON o.week_id = w.id
     LEFT JOIN submissions s

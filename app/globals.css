@@ -642,6 +642,18 @@ footer { margin-top: auto; }
 .ballot h2 { margin: 6px 0 0; font-size: 26px; letter-spacing: -.02em; }
 .ballot-entry { display: flex; flex-direction: column; gap: 10px; }
 .ballot-who { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+/* Your own proof, shown back to you before the reveal. Deliberately quieter
+   than the submit button: it is a reference, not the action on the page. */
+.mine { margin: 20px 0; }
+.mine-head {
+  margin: 0 0 8px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  opacity: .65;
+  font-weight: 700;
+}
+
 .proof {
   width: 100%;
   border-radius: 12px;

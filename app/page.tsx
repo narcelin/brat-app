@@ -60,7 +60,7 @@ export default async function ThisWeekPage() {
             title={o.title}
             description={o.description}
             tier={o.tier}
-            submitted={o.mySubmissionId !== null}
+            submitted={o.mySubmission !== null}
             open={open}
           />
         ))}

@@ -83,7 +83,7 @@ describe.skipIf(!process.env.DATABASE_URL)('submission privacy (integration)', (
 
     const objective = week!.objectives.find((o) => o.id === objectiveId)
     expect(objective).toBeDefined()
-    expect(objective!.mySubmissionId).toBeNull()
+    expect(objective!.mySubmission).toBeNull()
 
     const serialized = JSON.stringify(week)
     expect(serialized).not.toContain(ALICE)
@@ -97,7 +97,10 @@ describe.skipIf(!process.env.DATABASE_URL)('submission privacy (integration)', (
 
     const objective = week!.objectives.find((o) => o.id === objectiveId)
     expect(objective).toBeDefined()
-    expect(objective!.mySubmissionId).toBe(submissionId)
+    expect(objective!.mySubmission?.id).toBe(submissionId)
+    // She gets the media itself, not just the id — she has to be able to play
+    // it back before deciding whether to replace it.
+    expect(objective!.mySubmission?.mediaPathname).toBe(ALICE_MEDIA_PATHNAME)
   })
 
   // The roster deliberately reveals WHO has posted, because that cannot be

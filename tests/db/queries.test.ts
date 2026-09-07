@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeCurrentWeek, shapeRoster, shapeBallot, type WeekRow, type BallotRow } from '../../lib/db/queries'
+import { shapeCurrentWeek, shapeMine, shapeRoster, shapeBallot, type WeekRow, type BallotRow } from '../../lib/db/queries'
 import { isSeed } from '../../lib/domain/avatar'
 
 const base = {
@@ -11,9 +11,24 @@ const base = {
   forced_state: null,
 }
 
+const noMedia = {
+  media_pathname: null,
+  media_type: null,
+  trim_start: null,
+  trim_end: null,
+}
+
 const rows: WeekRow[] = [
-  { ...base, objective_id: 10, title: 'Bush', description: '', tier: 'easy', submission_id: 99, submission_user_id: 'alice' },
-  { ...base, objective_id: 11, title: 'Shoey', description: '', tier: 'unhinged', submission_id: null, submission_user_id: null },
+  {
+    ...base, objective_id: 10, title: 'Bush', description: '', tier: 'easy',
+    submission_id: 99, submission_user_id: 'alice',
+    media_pathname: 'w1/o10/alice.mp4', media_type: 'video',
+    trim_start: 1.5, trim_end: 9,
+  },
+  {
+    ...base, objective_id: 11, title: 'Shoey', description: '', tier: 'unhinged',
+    submission_id: null, submission_user_id: null, ...noMedia,
+  },
 ]
 
 const during = new Date('2026-09-03T00:00:00Z')
@@ -49,13 +64,58 @@ describe('shapeCurrentWeek', () => {
 
   it('reports the viewers own submission', () => {
     const week = shapeCurrentWeek(rows, 'alice', during)
-    expect(week?.objectives[0].mySubmissionId).toBe(99)
-    expect(week?.objectives[1].mySubmissionId).toBeNull()
+    expect(week?.objectives[0].mySubmission?.id).toBe(99)
+    expect(week?.objectives[1].mySubmission).toBeNull()
+  })
+
+  // The player has to be able to see what they posted to judge whether it is
+  // worth replacing, so the media has to survive shaping — not just its id.
+  it('carries the viewers own media so it can be played back', () => {
+    const week = shapeCurrentWeek(rows, 'alice', during)
+    expect(week?.objectives[0].mySubmission).toEqual({
+      id: 99,
+      mediaPathname: 'w1/o10/alice.mp4',
+      mediaType: 'video',
+      trimStart: 1.5,
+      trimEnd: 9,
+    })
   })
 
   it('never reports another players submission as the viewers own', () => {
     const week = shapeCurrentWeek(rows, 'bob', during)
-    expect(week?.objectives[0].mySubmissionId).toBeNull()
+    expect(week?.objectives[0].mySubmission).toBeNull()
+  })
+})
+
+describe('shapeMine', () => {
+  const mine: WeekRow = rows[0]
+
+  it('returns the submission when the viewer owns it', () => {
+    expect(shapeMine(mine, 'alice')?.mediaPathname).toBe('w1/o10/alice.mp4')
+  })
+
+  // The bug this guards against is a media pathname reaching a player who did
+  // not post it: that pathname is playable through the media route, so leaking
+  // it before reveal would let anyone watch anyone.
+  it('never leaks the media pathname to a player who does not own it', () => {
+    expect(shapeMine(mine, 'bob')).toBeNull()
+  })
+
+  it('returns null when there is no submission at all', () => {
+    expect(shapeMine(rows[1], 'alice')).toBeNull()
+  })
+
+  // Submissions predating the media_pathname column would otherwise shape into
+  // a player with a proof that cannot load.
+  it('returns null when the row has no media pathname', () => {
+    expect(shapeMine({ ...mine, media_pathname: null }, 'alice')).toBeNull()
+  })
+
+  it('keeps a photos null trim rather than inventing one', () => {
+    const photo = { ...mine, media_type: 'photo' as const, trim_start: null, trim_end: null }
+    expect(shapeMine(photo, 'alice')).toMatchObject({
+      mediaType: 'photo', trimStart: null, trimEnd: null,
+    })
   })
 })
 
@@ -69,6 +129,7 @@ describe('shapeCurrentWeek with a week that has no objectives', () => {
       tier: null as unknown as WeekRow['tier'],
       submission_id: null,
       submission_user_id: null,
+      ...noMedia,
     },
   ]
 

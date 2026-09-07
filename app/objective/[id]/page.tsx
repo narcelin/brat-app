@@ -4,6 +4,7 @@ import { getCurrentWeek, getObjectiveRoster } from '../../../lib/db/queries'
 import { canSubmit } from '../../../lib/domain/submission-rules'
 import { medalsFor } from '../../../lib/domain/tiers'
 import { ObjectiveRoster } from '../../../components/ObjectiveRoster'
+import { ProofPlayer } from '../../../components/ProofPlayer'
 import { SubmitPanel } from '../../../components/SubmitPanel'
 
 const TIER_LABEL = { easy: 'Easy', hard: 'Hard', unhinged: 'Unhinged' } as const
@@ -43,11 +44,26 @@ export default async function ObjectivePage({
         </ul>
       </header>
 
+      {/* Your own proof, played back before the reveal. Deciding whether to
+          replace a take is impossible from memory — and this leaks nothing,
+          because the only submission ever shaped into the page is your own. */}
+      {objective.mySubmission && (
+        <section className="mine">
+          <h2 className="mine-head">What you posted</h2>
+          <ProofPlayer
+            pathname={objective.mySubmission.mediaPathname}
+            mediaType={objective.mySubmission.mediaType}
+            trimStart={objective.mySubmission.trimStart}
+            trimEnd={objective.mySubmission.trimEnd}
+          />
+        </section>
+      )}
+
       {open ? (
         <SubmitPanel
           objectiveId={objective.id}
           playerId={player.id}
-          alreadySubmitted={objective.mySubmissionId !== null}
+          alreadySubmitted={objective.mySubmission !== null}
         />
       ) : (
         <p className="status">Submissions are closed for this week.</p>
