@@ -676,3 +676,14 @@ footer { margin-top: auto; }
   padding: 8px 0;
   border-bottom: 1px solid rgba(0, 0, 0, .18);
 }
+
+/* --- Trim playback --------------------------------------------------------- */
+
+/* Compact and centered, unlike the full-width default .btn: this sits between
+   the preview and the filmstrip, not in a stack of page-width actions. */
+.trim-play {
+  width: auto;
+  align-self: center;
+  padding: 10px 22px;
+  text-align: center;
+}

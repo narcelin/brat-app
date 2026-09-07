@@ -5,6 +5,7 @@ import { MAX_TRIM_SECONDS, validateTrim } from '../lib/domain/trim'
 import {
   adjustEnd, adjustStart, initialRange, timeFromPosition, type Range,
 } from '../lib/media/trim-range'
+import { clampPlaybackTime, playStartPosition } from '../lib/media/playback-clamp'
 
 const FRAME_COUNT = 6
 
@@ -112,6 +113,7 @@ export function Trimmer({
   const duration = measured ?? reportedDuration
   const [range, setRange] = useState<Range>(() => initialRange(reportedDuration))
   const [dragging, setDragging] = useState<'start' | 'end' | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const frames = useFilmstrip(src, duration)
   const result = validateTrim(range.start, range.end, duration)
@@ -234,12 +236,90 @@ export function Trimmer({
     return () => video.removeEventListener('loadedmetadata', show)
   }, [range.start, duration])
 
+  // Confines playback to the selected range. Reuses `clampPlaybackTime`
+  // rather than a second range check: past `range.end` it reports back
+  // `range.start`, which both stops the clip (so it does not run past the
+  // out point) and leaves the playhead ready to replay the selection on the
+  // next press, mirroring the loop-then-pause behaviour ProofPlayer relies
+  // on for the same helper.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const onTime = () => {
+      // Only correct positions reached by actual playback. A paused video
+      // still fires `timeupdate` for programmatic seeks — the seed-on-load
+      // effect, and `move()` scrubbing the preview to a dragged handle,
+      // including right up to `range.end` itself — and clamping those would
+      // fight both: the handle drag would never be able to show the frame at
+      // the out point, snapping back to the start on every move instead.
+      if (video.paused) return
+      const target = clampPlaybackTime(video.currentTime, range.start, range.end)
+      if (target === null) return
+      video.pause()
+      video.currentTime = target
+    }
+    // Tracks actual play/pause/end state rather than inferring it, so the
+    // button stays correct if playback stops on its own (reaching the out
+    // point above) rather than only when the button itself is pressed.
+    const onPlay = () => setIsPlaying(true)
+    const onStop = () => setIsPlaying(false)
+
+    video.addEventListener('timeupdate', onTime)
+    video.addEventListener('play', onPlay)
+    video.addEventListener('pause', onStop)
+    video.addEventListener('ended', onStop)
+    return () => {
+      video.removeEventListener('timeupdate', onTime)
+      video.removeEventListener('play', onPlay)
+      video.removeEventListener('pause', onStop)
+      video.removeEventListener('ended', onStop)
+    }
+  }, [range.start, range.end])
+
+  const handlePlayPause = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (isPlaying) {
+      video.pause()
+      return
+    }
+
+    // The element is muted so the seed effect above can seek it on iOS
+    // without a user gesture. This press *is* a real gesture, and a clip
+    // you cannot hear is not one you can judge, so unmute here.
+    video.muted = false
+    video.currentTime = playStartPosition(video.currentTime, range.start, range.end)
+    video.play().catch(() => {
+      // Autoplay-style rejection shouldn't happen from a tap handler, but if
+      // it does there is nothing more to do than leave the button in its
+      // (already correct, via the `pause` event) paused state.
+    })
+  }, [isPlaying, range.start, range.end])
+
+  // Dragging a handle writes `currentTime` on every pointer move, which
+  // would fight a running playhead for the same property. Pause first.
+  const startDrag = useCallback((handle: 'start' | 'end') => {
+    videoRef.current?.pause()
+    setDragging(handle)
+  }, [])
+
   const pct = (t: number) => `${(t / Math.max(duration, 0.001)) * 100}%`
   const selected = range.end - range.start
 
   return (
     <div className="trimmer">
       <video ref={videoRef} src={src} playsInline muted preload="auto" className="preview" />
+
+      <button
+        type="button"
+        className="btn ghost trim-play"
+        onClick={handlePlayPause}
+        aria-label={isPlaying ? 'Pause' : 'Play selection'}
+      >
+        {isPlaying ? '⏸ Pause' : '▶ Play selection'}
+      </button>
 
       <div className="filmstrip" ref={trackRef}>
         <div className="filmstrip-frames" aria-hidden="true">
@@ -258,13 +338,13 @@ export function Trimmer({
           <button
             type="button"
             className="film-handle is-start"
-            onPointerDown={() => setDragging('start')}
+            onPointerDown={() => startDrag('start')}
             aria-label={`Trim start, ${range.start.toFixed(1)} seconds`}
           />
           <button
             type="button"
             className="film-handle is-end"
-            onPointerDown={() => setDragging('end')}
+            onPointerDown={() => startDrag('end')}
             aria-label={`Trim end, ${range.end.toFixed(1)} seconds`}
           />
         </div>

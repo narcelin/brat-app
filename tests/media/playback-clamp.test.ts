@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clampPlaybackTime } from '../../lib/media/playback-clamp'
+import { clampPlaybackTime, playStartPosition } from '../../lib/media/playback-clamp'
 
 describe('clampPlaybackTime', () => {
   it('snaps back to trimStart once playback reaches trimEnd', () => {
@@ -27,5 +27,29 @@ describe('clampPlaybackTime', () => {
     expect(clampPlaybackTime(0, 0, 30)).toBeNull()
     expect(clampPlaybackTime(15, 0, 30)).toBeNull()
     expect(clampPlaybackTime(30, 0, 30)).toBe(0)
+  })
+})
+
+describe('playStartPosition', () => {
+  it('starts from the current position when it sits inside the selection', () => {
+    expect(playStartPosition(7, 5, 10)).toBe(7)
+  })
+
+  it('starts from range.start when the current position is before the selection', () => {
+    expect(playStartPosition(1, 5, 10)).toBe(5)
+  })
+
+  it('starts from the current position exactly at the start boundary', () => {
+    expect(playStartPosition(5, 5, 10)).toBe(5)
+  })
+
+  it('starts from range.start when the current position sits exactly at the end boundary', () => {
+    // Playing from exactly trimEnd would have nothing left to play, so this
+    // counts as "outside" and resets to the top of the selection.
+    expect(playStartPosition(10, 5, 10)).toBe(5)
+  })
+
+  it('starts from range.start when the current position is past the end', () => {
+    expect(playStartPosition(12, 5, 10)).toBe(5)
   })
 })

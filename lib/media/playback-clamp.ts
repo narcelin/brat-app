@@ -22,3 +22,21 @@ export function clampPlaybackTime(
   if (currentTime < trimStart - START_TOLERANCE_SECONDS) return trimStart
   return null
 }
+
+/** Where a play press should start from, given the current playhead position
+ *  and the selected range. Playing only the selection (rather than the whole
+ *  recording) is only meaningful if a fresh press always lands inside it: a
+ *  playhead left outside the range — before it, or sitting at/past the end
+ *  from a previous play running to completion — resets to `trimStart`, so
+ *  pressing play always replays the selection rather than silently doing
+ *  nothing. A playhead already inside the range (e.g. paused mid-clip) is
+ *  left where it is. The end boundary itself counts as "outside": starting
+ *  exactly at `trimEnd` would have nothing left to play. */
+export function playStartPosition(
+  currentTime: number,
+  trimStart: number,
+  trimEnd: number,
+): number {
+  if (currentTime < trimStart || currentTime >= trimEnd) return trimStart
+  return currentTime
+}
