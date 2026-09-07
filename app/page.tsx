@@ -65,6 +65,7 @@ export default async function ThisWeekPage() {
           />
         ))}
       </div>
+      <a className="btn ghost" href="/leaderboard">Standings</a>
     </main>
   )
 }

@@ -642,3 +642,19 @@ footer { margin-top: auto; }
   background: #000;
   display: block;
 }
+
+/* --- Standings ----------------------------------------------------------- */
+
+.standings { margin: 0; padding: 0; list-style: none; }
+.standings li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, .18);
+}
+.standings li.is-you { font-weight: 700; }
+.standings-rank { width: 22px; font-weight: 800; opacity: .55; }
+.standings-name { flex: 1; font-weight: 600; }
+.standings-medals { font-size: 13px; opacity: .75; white-space: nowrap; }
+.standings-points { font-size: 18px; min-width: 44px; text-align: right; }
