@@ -20,13 +20,11 @@ function extensionFor(file: File): string {
 
 export function SubmitFlow({
   objectiveId,
-  playerId,
-}: {
+  playerId, onClose }: {
   objectiveId: number
   /** The viewer's own id, used to derive their upload key. Never another
    *  player's — nothing about anyone else reaches this component. */
-  playerId: string
-}) {
+  playerId: string; onClose: () => void }) {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [kind, setKind] = useState<'photo' | 'video'>('video')
@@ -122,6 +120,7 @@ export function SubmitFlow({
   if (!file) {
     return (
       <Capture
+        onCancel={onClose}
         onCaptured={(captured, capturedKind, capturedDuration) => {
           setFile(captured)
           setKind(capturedKind)
@@ -166,7 +165,8 @@ export function SubmitFlow({
   }
 
   return (
-    <div className="stack">
+    <div className="sheet-body sheet-review">
+      <div className="sheet-review-media">
       {kind === 'video' && previewUrl ? (
         <Trimmer
           src={previewUrl}
@@ -176,24 +176,27 @@ export function SubmitFlow({
       ) : (
         previewUrl && <img src={previewUrl} alt="Your proof" className="preview" />
       )}
+      </div>
 
       {error && <p className="status">{error}</p>}
 
-      <button
-        className="btn"
-        disabled={busy || (kind === 'video' && !trim.valid)}
-        onClick={submit}
-      >
-        {busy ? 'Uploading…' : 'Submit proof'}
-      </button>
-      <button className="btn ghost" onClick={() => setFile(null)} disabled={busy}>
-        Retake
-      </button>
-      {previewUrl && (
-        <button className="btn ghost" onClick={saveRecording} disabled={busy}>
-          Save full recording to my phone
+      <div className="sheet-review-actions">
+        <button
+          className="btn"
+          disabled={busy || (kind === 'video' && !trim.valid)}
+          onClick={submit}
+        >
+          {busy ? 'Uploading…' : 'Submit proof'}
         </button>
-      )}
+        <button className="btn ghost" onClick={() => setFile(null)} disabled={busy}>
+          Retake
+        </button>
+        {previewUrl && (
+          <button className="btn ghost" onClick={saveRecording} disabled={busy}>
+            Save full recording to my phone
+          </button>
+        )}
+      </div>
     </div>
   )
 }

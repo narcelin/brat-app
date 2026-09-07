@@ -279,3 +279,158 @@ footer { margin-top: auto; }
   opacity: .8;
   pointer-events: none;
 }
+
+/* --- Capture sheet ------------------------------------------------------- */
+
+/* Fullscreen, fixed, above everything including the sticky app bar. Capture is
+   a mode, not a section of a scrolling page. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The frame fills the screen and crops, the way a phone camera does. */
+.sheet-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.sheet-message {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  text-align: center;
+  padding: 0 32px;
+  pointer-events: none;
+}
+
+.sheet-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 14px);
+  left: 16px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .5);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.sheet-timer {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #E23B3B;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Controls float over the frame rather than sitting below it. */
+.sheet-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 20px calc(env(safe-area-inset-bottom) + 26px);
+  background: linear-gradient(to top, rgba(0, 0, 0, .75), transparent);
+}
+
+.mode-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .5);
+}
+.mode-switch button {
+  border: none;
+  background: none;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: .6;
+}
+.mode-switch button.is-on {
+  background: #fff;
+  color: #000;
+  opacity: 1;
+}
+
+/* The familiar ring-and-core shutter: white for a photo, red for video, and a
+   square core while recording to read as "stop". */
+.shutter {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: transparent;
+  cursor: pointer;
+  padding: 5px;
+  position: relative;
+}
+.shutter::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-radius .12s ease, transform .12s ease, background .12s ease;
+}
+.shutter.is-video::after { background: #E23B3B; }
+.shutter.is-recording::after { border-radius: 8px; transform: scale(.55); }
+.shutter:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Review keeps the same fullscreen focus: media above, actions below. */
+.sheet-review {
+  background: #000;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  gap: 12px;
+  overflow-y: auto;
+}
+.sheet-review-media { flex: 1; min-height: 0; display: flex; align-items: center; }
+.sheet-review-media > * { width: 100%; }
+.sheet-review .preview { aspect-ratio: auto; max-height: 52vh; background: #000; }
+.sheet-review-actions { display: flex; flex-direction: column; gap: 10px; }
+.sheet-review .status { color: #fff; }
+.sheet-review label.status { color: #fff; }

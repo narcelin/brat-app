@@ -13,8 +13,10 @@ import { MAX_RECORDING_SECONDS } from '../lib/domain/trim'
 
 export function Capture({
   onCaptured,
+  onCancel,
 }: {
   onCaptured: (file: File, kind: 'photo' | 'video', durationSeconds: number) => void
+  onCancel: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -28,6 +30,7 @@ export function Capture({
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [needsTap, setNeedsTap] = useState(false)
   const [live, setLive] = useState(false)
+  const [mode, setMode] = useState<'photo' | 'video'>('video')
 
   useEffect(() => {
     let cancelled = false
@@ -187,39 +190,67 @@ export function Capture({
     )
   }
 
-  if (error) return <p className="status">{error}</p>
+  if (error) {
+    return (
+      <div className="sheet-body">
+        <p className="sheet-message">{error}</p>
+        <div className="sheet-controls">
+          <button className="btn" onClick={onCancel}>Close</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="capture">
-      <div className="preview-wrap">
-        <video ref={videoRef} autoPlay playsInline muted className="preview" />
-        {!live && (
-          <p className="preview-hint">
-            {needsTap ? 'Tap “Start camera” below' : 'Starting camera…'}
-          </p>
-        )}
-      </div>
-      {needsTap && (
-        <button className="btn" onClick={startPreview}>
-          Start camera
-        </button>
+    <div className="sheet-body">
+      <video ref={videoRef} autoPlay playsInline muted className="sheet-video" />
+
+      {!live && (
+        <p className="sheet-message">
+          {needsTap ? 'Tap the button below to start the camera' : 'Starting camera…'}
+        </p>
       )}
+
+      <button className="sheet-close" onClick={onCancel} aria-label="Close camera">
+        ✕
+      </button>
+
       {recording && (
-        <p className="status">
+        <p className="sheet-timer">
           {elapsed.toFixed(1)}s / {MAX_RECORDING_SECONDS}s
         </p>
       )}
-      <div className="stack">
-        <button
-          className="btn"
-          onClick={recording ? stopRecording : startRecording}
-        >
-          {recording ? 'Stop' : 'Record video'}
-        </button>
-        {!recording && (
-          <button className="btn ghost" onClick={takePhoto}>
-            Take photo
-          </button>
+
+      <div className="sheet-controls">
+        {needsTap ? (
+          <button className="btn" onClick={startPreview}>Start camera</button>
+        ) : (
+          <>
+            {/* Hidden while recording: switching mode mid-take would drop it. */}
+            <div className="mode-switch" hidden={recording}>
+              <button
+                className={mode === 'photo' ? 'is-on' : undefined}
+                onClick={() => setMode('photo')}
+              >
+                Photo
+              </button>
+              <button
+                className={mode === 'video' ? 'is-on' : undefined}
+                onClick={() => setMode('video')}
+              >
+                Video
+              </button>
+            </div>
+
+            <button
+              className={`shutter${mode === 'video' ? ' is-video' : ''}${recording ? ' is-recording' : ''}`}
+              onClick={mode === 'photo' ? takePhoto : recording ? stopRecording : startRecording}
+              disabled={!live}
+              aria-label={
+                mode === 'photo' ? 'Take photo' : recording ? 'Stop recording' : 'Start recording'
+              }
+            />
+          </>
         )}
       </div>
     </div>

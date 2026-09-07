@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CaptureSheet } from './CaptureSheet'
 import { SubmitFlow } from './SubmitFlow'
 
 /** Gates the camera behind a deliberate tap. Opening `getUserMedia` on page
@@ -19,12 +20,13 @@ export function SubmitPanel({
 
   if (capturing) {
     return (
-      <div className="stack">
-        <SubmitFlow objectiveId={objectiveId} playerId={playerId} />
-        <button className="btn ghost" onClick={() => setCapturing(false)}>
-          Cancel
-        </button>
-      </div>
+      <CaptureSheet onClose={() => setCapturing(false)}>
+        <SubmitFlow
+          objectiveId={objectiveId}
+          playerId={playerId}
+          onClose={() => setCapturing(false)}
+        />
+      </CaptureSheet>
     )
   }
 
