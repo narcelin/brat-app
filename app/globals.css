@@ -458,3 +458,91 @@ footer { margin-top: auto; }
 
 /* The shutter is its own control and must not inherit the above. */
 .sheet .shutter { background: transparent; border-color: #fff; }
+
+/* --- Trimmer ------------------------------------------------------------- */
+
+.trimmer { display: flex; flex-direction: column; gap: 14px; }
+
+/* The filmstrip is the control: you pick frames, not numbers. */
+.filmstrip {
+  position: relative;
+  height: 62px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1a1a1a;
+  touch-action: none; /* the drag is ours, not the browser's scroll */
+  user-select: none;
+}
+.filmstrip-frames { display: flex; height: 100%; }
+.filmstrip-frames img,
+.filmstrip-frames .film-blank {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  object-fit: cover;
+  display: block;
+}
+.filmstrip-frames .film-blank { background: #262626; }
+
+/* Everything outside the selection is dimmed rather than hidden, so you can
+   still see what you are cutting away. */
+.film-shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, .62);
+  pointer-events: none;
+}
+
+.film-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 3px solid #FFD200;
+  border-radius: 8px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* Handles are wider than they look: the visible bar is 12px, the touch target
+   is 40px, because a 12px target is unusable with a thumb. */
+.film-handle {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 40px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+.film-handle.is-start { left: -20px; }
+.film-handle.is-end { right: -20px; }
+.film-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  background: #FFD200;
+  border-radius: 4px;
+}
+.film-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 16px;
+  background: rgba(0, 0, 0, .45);
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.trim-readout { text-align: center; }
+.trim-readout b { font-weight: 700; }
