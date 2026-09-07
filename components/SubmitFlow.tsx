@@ -20,11 +20,20 @@ function extensionFor(file: File): string {
 
 export function SubmitFlow({
   objectiveId,
-  playerId, onClose }: {
+  playerId,
+  onClose,
+  alreadySubmitted,
+}: {
   objectiveId: number
   /** The viewer's own id, used to derive their upload key. Never another
    *  player's — nothing about anyone else reaches this component. */
-  playerId: string; onClose: () => void }) {
+  playerId: string
+  onClose: () => void
+  /** Whether the player already has proof posted for this objective. Only
+   *  affects wording: discarding a take must make clear whether it leaves an
+   *  existing submission standing or leaves them with nothing posted. */
+  alreadySubmitted: boolean
+}) {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [kind, setKind] = useState<'photo' | 'video'>('video')
@@ -190,7 +199,22 @@ export function SubmitFlow({
       )}
       </div>
 
+      <p className="status">
+        {alreadySubmitted
+          ? 'Submitting replaces the proof you already posted.'
+          : 'Nothing is posted until you submit.'}
+      </p>
+
       {error && <p className="status">{error}</p>}
+
+      <button
+        className="sheet-close"
+        onClick={onClose}
+        disabled={busy}
+        aria-label={alreadySubmitted ? 'Discard this take and keep your current proof' : 'Discard this take'}
+      >
+        ✕
+      </button>
 
       <div className="sheet-review-actions">
         <button
@@ -202,6 +226,11 @@ export function SubmitFlow({
         </button>
         <button className="btn ghost" onClick={() => setFile(null)} disabled={busy}>
           Retake
+        </button>
+        {/* Nothing has been uploaded yet at this point — the upload only
+            happens on submit — so leaving simply drops the local file. */}
+        <button className="btn ghost" onClick={onClose} disabled={busy}>
+          {alreadySubmitted ? 'Discard — keep my current proof' : 'Discard and close'}
         </button>
         {previewUrl && (
           <button className="btn ghost" onClick={saveRecording} disabled={busy}>

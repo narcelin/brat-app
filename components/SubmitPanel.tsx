@@ -25,6 +25,7 @@ export function SubmitPanel({
           objectiveId={objectiveId}
           playerId={playerId}
           onClose={() => setCapturing(false)}
+          alreadySubmitted={alreadySubmitted}
         />
       </CaptureSheet>
     )
