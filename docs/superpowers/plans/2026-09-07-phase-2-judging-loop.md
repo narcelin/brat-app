@@ -2199,6 +2199,66 @@ describe.skipIf(!process.env.DATABASE_URL)('voting end to end (integration)', ()
     ).rejects.toThrow()
   })
 
+  it('scores a ratified lone entry, and counts every ratification', async () => {
+    // Regression: the first version of getStandings keyed its ratification
+    // dedup on the VOTES table's voter_id, which is null for a ratify-only
+    // objective — so every approval was silently dropped and a lone entry
+    // could never be ratified. Unit tests could not see this; only a real
+    // join can.
+    const [solo] = (await sql`
+      SELECT o.id, o.tier, w.season_id
+      FROM objectives o JOIN weeks w ON w.id = o.week_id
+      WHERE o.id <> ${objectiveId}
+      ORDER BY o.id LIMIT 1
+    `) as { id: number; tier: typeof tier; season_id: number }[]
+
+    await sql`
+      INSERT INTO submissions (objective_id, user_id, media_url, media_pathname, media_type)
+      VALUES (${solo.id}, ${A}, 'https://itest.invalid/solo', ${'p/solo-' + A}, 'photo')
+      ON CONFLICT (objective_id, user_id) DO NOTHING
+    `
+    await sql`DELETE FROM ratifications WHERE objective_id = ${solo.id}`
+    await sql`
+      INSERT INTO ratifications (objective_id, voter_id, approved)
+      VALUES (${solo.id}, ${B}, true), (${solo.id}, ${C}, true)
+    `
+    await sql`
+      UPDATE weeks SET forced_state = 'CLOSED'
+      WHERE id = (SELECT week_id FROM objectives WHERE id = ${solo.id})
+    `
+
+    const standings = await getStandings(solo.season_id)
+    const a = standings.find((s) => s.userId === A)!
+    expect(a.golds).toBeGreaterThanOrEqual(1)
+
+    await sql`DELETE FROM ratifications WHERE objective_id = ${solo.id}`
+    await sql`DELETE FROM submissions WHERE objective_id = ${solo.id} AND user_id = ${A}`
+    await sql`
+      UPDATE weeks SET forced_state = NULL
+      WHERE id = (SELECT week_id FROM objectives WHERE id = ${solo.id})
+    `
+  })
+
+  it('excludes a week an admin has forced back open, even once the clock has passed', async () => {
+    // Regression: the WHERE clause used to let the clock override a forced
+    // state, so a week deliberately kept open for voting was published anyway.
+    const weekId = (await sql`
+      SELECT week_id FROM objectives WHERE id = ${objectiveId}
+    `)[0].week_id as number
+
+    await sql`
+      UPDATE weeks
+      SET forced_state = 'VOTING', voting_closes_at = now() - interval '1 day'
+      WHERE id = ${weekId}
+    `
+    const whileOpen = await getStandings(seasonId)
+    expect(whileOpen.find((s) => s.userId === A)?.points ?? 0).toBe(0)
+
+    await sql`UPDATE weeks SET forced_state = 'CLOSED' WHERE id = ${weekId}`
+    const afterClose = await getStandings(seasonId)
+    expect(afterClose.find((s) => s.userId === A)!.points).toBeGreaterThan(0)
+  })
+
   it('refuses two players in the same place', async () => {
     await expect(
       sql`
