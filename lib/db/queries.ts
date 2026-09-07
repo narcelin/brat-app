@@ -4,6 +4,7 @@ import {
   effectiveWeekState, type ForcedState, type WeekState, type WeekWindows,
 } from '../domain/week-state'
 import { parseSeed, seedFromPlayerId } from '../domain/avatar'
+import { isRatifyObjective } from '../domain/ballot'
 
 export interface WeekRow {
   week_id: number
@@ -195,4 +196,128 @@ export async function getObjectiveRoster(objectiveId: number): Promise<RosterEnt
   `) as RosterRow[]
 
   return shapeRoster(rows)
+}
+
+export interface BallotRow {
+  objective_id: number
+  title: string
+  tier: Tier
+  entrant_id: string
+  display_name: string
+  avatar_seed: number | null
+  submission_id: number
+  media_pathname: string
+  media_type: 'photo' | 'video'
+  trim_start: number | null
+  trim_end: number | null
+  my_place: number | null
+  my_ranked_user_id: string | null
+  my_approved: boolean | null
+}
+
+export interface BallotEntrant {
+  userId: string
+  displayName: string
+  avatarSeed: number
+  submissionId: number
+  mediaPathname: string
+  mediaType: 'photo' | 'video'
+  trimStart: number | null
+  trimEnd: number | null
+}
+
+export interface BallotObjective {
+  objectiveId: number
+  title: string
+  tier: Tier
+  entrants: BallotEntrant[]
+  isRatify: boolean
+  /** The viewer's own ranking, best first. Empty when they have not voted. */
+  myRanking: string[]
+  myRatification: boolean | null
+}
+
+export function shapeBallot(rows: BallotRow[], viewerId: string): BallotObjective[] {
+  const byObjective = new Map<number, BallotObjective>()
+  // Collected separately because a row carries at most one place, and the
+  // ranking has to come back in place order rather than row order.
+  const rankings = new Map<number, { place: number; userId: string }[]>()
+
+  for (const row of rows) {
+    let objective = byObjective.get(row.objective_id)
+    if (!objective) {
+      objective = {
+        objectiveId: row.objective_id,
+        title: row.title,
+        tier: row.tier,
+        entrants: [],
+        isRatify: false,
+        myRanking: [],
+        myRatification: row.my_approved,
+      }
+      byObjective.set(row.objective_id, objective)
+      rankings.set(row.objective_id, [])
+    }
+
+    if (!objective.entrants.some((e) => e.userId === row.entrant_id)) {
+      objective.entrants.push({
+        userId: row.entrant_id,
+        displayName: row.display_name,
+        avatarSeed: parseSeed(row.avatar_seed) ?? seedFromPlayerId(row.entrant_id),
+        submissionId: row.submission_id,
+        mediaPathname: row.media_pathname,
+        mediaType: row.media_type,
+        trimStart: row.trim_start,
+        trimEnd: row.trim_end,
+      })
+    }
+
+    if (row.my_place !== null && row.my_ranked_user_id !== null) {
+      const list = rankings.get(row.objective_id)!
+      if (!list.some((r) => r.userId === row.my_ranked_user_id)) {
+        list.push({ place: row.my_place, userId: row.my_ranked_user_id })
+      }
+    }
+
+    if (row.my_approved !== null) objective.myRatification = row.my_approved
+  }
+
+  for (const objective of byObjective.values()) {
+    objective.isRatify = isRatifyObjective(objective.entrants.length)
+    objective.myRanking = (rankings.get(objective.objectiveId) ?? [])
+      .sort((a, b) => a.place - b.place)
+      .map((r) => r.userId)
+  }
+
+  return [...byObjective.values()]
+}
+
+/** Every entrant's proof for a week, plus whatever the viewer has already
+ *  voted. Callers MUST have checked the week is in VOTING or CLOSED first —
+ *  this returns other players' media pathnames by design. */
+export async function getBallot(
+  weekId: number,
+  viewerId: string,
+): Promise<BallotObjective[]> {
+  const rows = (await sql`
+    SELECT
+      o.id AS objective_id, o.title, o.tier,
+      s.user_id AS entrant_id, u.display_name, u.avatar_seed,
+      s.id AS submission_id, s.media_pathname, s.media_type,
+      s.trim_start, s.trim_end,
+      v.place AS my_place, v.submission_user_id AS my_ranked_user_id,
+      r.approved AS my_approved
+    FROM objectives o
+    JOIN submissions s ON s.objective_id = o.id
+    JOIN users u ON u.id = s.user_id
+    LEFT JOIN votes v
+      ON v.objective_id = o.id AND v.voter_id = ${viewerId}
+      AND v.submission_user_id = s.user_id
+    LEFT JOIN ratifications r
+      ON r.objective_id = o.id AND r.voter_id = ${viewerId}
+    WHERE o.week_id = ${weekId}
+    ORDER BY o.id, s.id
+  `) as BallotRow[]
+
+  return shapeBallot(rows, viewerId)
 }

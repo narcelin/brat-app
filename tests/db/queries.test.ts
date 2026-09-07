@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shapeCurrentWeek, shapeRoster, type WeekRow } from '../../lib/db/queries'
+import { shapeCurrentWeek, shapeRoster, shapeBallot, type WeekRow, type BallotRow } from '../../lib/db/queries'
 import { isSeed } from '../../lib/domain/avatar'
 
 const base = {
@@ -121,5 +121,60 @@ describe('shapeRoster', () => {
 
   it('handles an empty roster', () => {
     expect(shapeRoster([])).toEqual([])
+  })
+})
+
+describe('shapeBallot', () => {
+  const base = {
+    objective_id: 1,
+    title: 'Shower fully clothed',
+    tier: 'unhinged' as const,
+    my_place: null as number | null,
+    my_ranked_user_id: null as string | null,
+    my_approved: null as boolean | null,
+  }
+  const alice = {
+    ...base,
+    entrant_id: 'alice', display_name: 'Alice', avatar_seed: 10,
+    submission_id: 1, media_pathname: 'p/a', media_type: 'video' as const,
+    trim_start: 0, trim_end: 12,
+  }
+  const bob = {
+    ...base,
+    entrant_id: 'bob', display_name: 'Bob', avatar_seed: 20,
+    submission_id: 2, media_pathname: 'p/b', media_type: 'photo' as const,
+    trim_start: null, trim_end: null,
+  }
+
+  it('groups entrants under their objective', () => {
+    const ballot = shapeBallot([alice, bob] as BallotRow[], 'zoe')
+    expect(ballot).toHaveLength(1)
+    expect(ballot[0].entrants.map((e) => e.userId)).toEqual(['alice', 'bob'])
+  })
+
+  it('marks a single-entrant objective as a ratify vote', () => {
+    const ballot = shapeBallot([alice] as BallotRow[], 'zoe')
+    expect(ballot[0].isRatify).toBe(true)
+  })
+
+  it('is a ranked ballot with two entrants', () => {
+    expect(shapeBallot([alice, bob] as BallotRow[], 'zoe')[0].isRatify).toBe(false)
+  })
+
+  it('reads back the viewers own ranking in place order', () => {
+    const rows = [
+      { ...alice, my_place: 2, my_ranked_user_id: 'alice' },
+      { ...bob, my_place: 1, my_ranked_user_id: 'bob' },
+    ] as BallotRow[]
+    expect(shapeBallot(rows, 'zoe')[0].myRanking).toEqual(['bob', 'alice'])
+  })
+
+  it('reports no ranking when the viewer has not voted', () => {
+    expect(shapeBallot([alice, bob] as BallotRow[], 'zoe')[0].myRanking).toEqual([])
+  })
+
+  it('reads back the viewers ratification', () => {
+    const rows = [{ ...alice, my_approved: true }] as BallotRow[]
+    expect(shapeBallot(rows, 'zoe')[0].myRatification).toBe(true)
   })
 })
