@@ -114,6 +114,35 @@ lost. Nothing in this section is scheduled.
   ballot being exactly `expected` long, so this is a `BallotCard` change with
   no server work.
 
+- **Upload proof from the photo library, instead of only capturing in-app.**
+  The picker is the easy part: `<input type="file" accept="image/*,video/*">`
+  hands back a `File`, and everything downstream of capture in
+  `components/SubmitFlow.tsx` — the Trimmer, the blob upload — is already
+  `File`-based and does not care where the file came from.
+
+  What makes it non-trivial is that three of our constraints assume we encoded
+  the file ourselves:
+
+  - **Length.** `validateTrim` rejects `duration > MAX_RECORDING_SECONDS` (60s)
+    server-side, and trims are non-destructive metadata, so the whole file
+    still uploads. A three-minute clip from Photos cannot be trimmed under the
+    limit — it has to be cut, which means client-side transcoding.
+  - **Size.** `MAX_UPLOAD_BYTES` is 25MB, sized for our ~1.5 Mbps capture. A 4K
+    iPhone clip passes that in roughly 25 seconds, and again trimming does not
+    help.
+  - **Codec.** iPhones write HEVC in a `.mov`. It plays on other iPhones and
+    fails on Android and desktop Chrome. In-app capture avoids this by owning
+    the encoder.
+
+  **Photos only would be easy** — no duration or codec problem, and stills are
+  small enough that the size cap is never in play. Library *video* needs
+  transcoding to do honestly. If this is ever picked up, do the two separately.
+
+  There is also a game question, not just a technical one: in-app capture
+  proves the media was made this week for this objective. A library upload does
+  not. That may be desirable — the good shot happened before you opened the app
+  — but it is a rule change and belongs in the design doc, not just the code.
+
 ## Held in reserve
 
 Fixes for voting load, to apply only if Phase 2 shows voting decaying:
