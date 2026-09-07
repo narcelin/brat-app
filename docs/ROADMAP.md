@@ -48,22 +48,20 @@ waiting game, and there is no way to advance a week without editing the database
 - [x] Guard: only an admin may advance a week, and advancing must never reopen
       a closed one (that would let proof be added after reveal)
 
-## Phase 2 — The judging loop
+## Phase 2 — The judging loop ✅ SHIPPED 2026-09-07
 
 Proves people will judge. This is where the game becomes a game.
 
-- [ ] Reveal at submission close
-- [ ] Vote screen: rank entrants per objective
-- [ ] Ratify flow for single-entrant objectives
-- [ ] No self-voting, enforced server-side
-- [ ] Scoring derived from votes on voting close
-- [ ] Leaderboard: season points + medal table
+- [x] Reveal at submission close
+- [x] Vote screen: rank entrants per objective
+- [x] Ratify flow for single-entrant objectives
+- [x] No self-voting, enforced server-side
+- [x] Scoring derived from votes on voting close
+- [x] Leaderboard: season points + medal table
 - [ ] **Measure whether people finish voting** — the top risk in the design
 
 ## Phase 2 prerequisites carried over from Phase 1
 
-- [ ] Authenticated media streaming route — Blob is private, so `get(pathname, { access: 'private' })` behind a Clerk check is required before any proof can be played back
-- [ ] Do NOT treat `access: 'private'` as the reveal gate; the upload token cannot constrain it
 - [ ] Point `test:integration` at a separate Neon branch — dev and production currently share one database
 - [ ] Delete the previous blob when a submission is replaced
 
