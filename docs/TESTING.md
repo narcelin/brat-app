@@ -50,6 +50,20 @@ or a command copied from the wrong place all fail closed, because only
 
 Verified by pointing the suite at production: it refuses and runs nothing.
 
+### The blob store is NOT branched
+
+There is one Vercel Blob store, shared by every database branch. A branch
+clones the rows that point into it; it does not clone the media.
+
+Two consequences:
+
+- Integration tests must never delete a blob. They don't — they only write
+  rows — but a future test that cleans up "its" media would delete a real
+  player's proof.
+- `scripts/sweep-orphan-blobs.mjs` refuses to run against a test branch, for
+  the same reason: a diverged test database would report production's media as
+  unreferenced and delete it.
+
 ### Refreshing the branch
 
 The branch is disposable. To reset it from production's current schema, delete
