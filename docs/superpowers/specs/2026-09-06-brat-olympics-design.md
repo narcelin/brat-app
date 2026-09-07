@@ -68,6 +68,32 @@ Season totals accumulate across weeks.
 - Only as many places are awarded as there were entrants. Nobody wins a medal in a
   race they ran alone.
 
+### Turning ballots into medals
+
+Decided 2026-09-07, when Phase 2 was planned. The original spec said voters rank
+entrants and medals go to the top three, but never said how a pile of individual
+rankings becomes one group ranking.
+
+**Borda count.** A 1st-place vote is worth 3, a 2nd 2, a 3rd 1. Highest total
+takes gold. Simple to explain at the pub, and hard to argue with.
+
+**Ties share the place and skip the next.** Two players level on points both take
+gold, nobody takes silver, and bronze is still awarded. This is standard olympic
+behaviour, needs no arbitrary tiebreak on something nobody was competing over,
+and a shared gold is a good outcome rather than a bug.
+
+> **Flagged for review after season 1.** Shared places were chosen to avoid
+> inventing a tiebreak. If ties turn out to be common with a group this size —
+> and with few voters they may well be — revisit. The alternatives considered
+> were "earliest submission wins" (deterministic, but decides on something
+> nobody was competing on) and "most 1st-place votes wins" (more correct, still
+> ties, needs explaining).
+
+**Ballots are per objective.** Each objective's ballot saves on its own rather
+than requiring all three at once. Lower friction, and more votes get cast — the
+risk being that people vote on the funny objective and skip the rest. Worth
+measuring, since finishing the ballot is the top risk in this design.
+
 ### Deliberate non-features
 
 - **Vote trading is allowed.** Two friends can collude to lock a podium. They will
