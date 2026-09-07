@@ -1,10 +1,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { Show, UserButton } from '@clerk/nextjs'
+import { Show } from '@clerk/nextjs'
 import { currentPlayer } from '../lib/auth/current-player'
 import { isAdmin } from '../lib/auth/is-admin'
 import { seedFromPlayerId } from '../lib/domain/avatar'
-import { Avatar } from './Avatar'
+import { AccountMenu } from './AccountMenu'
 
 /** Persistent navigation chrome. The app is only ever two levels deep
  *  (This Week -> an objective), so the wordmark doubles as the back action
@@ -36,16 +36,8 @@ export async function AppHeader() {
           </Link>
         )}
         {player && (
-          <span className="header-face" aria-hidden="true">
-            <Avatar seed={player.avatarSeed ?? seedFromPlayerId(player.id)} />
-          </span>
+          <AccountMenu seed={player.avatarSeed ?? seedFromPlayerId(player.id)} />
         )}
-        <UserButton
-          appearance={{ elements: { avatarBox: { width: 34, height: 34 } } }}
-          // Folds the roller into Clerk's own account menu rather than having
-          // two account controls side by side in the header.
-          customMenuItems={[{ label: 'Change my brat', href: '/me' }]}
-        />
       </Show>
     </header>
   )

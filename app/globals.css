@@ -170,14 +170,50 @@ footer { margin-top: auto; }
   flex: none;
 }
 
-.header-face { display: block; line-height: 0; }
-.header-face svg { pointer-events: none; }
-.header-face svg {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+/* Your brat is the account button — one control, not two circles. */
+.account { position: relative; }
+.account-trigger {
+  display: block;
+  padding: 0;
   border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: none;
+  line-height: 0;
+  cursor: pointer;
+  overflow: hidden;
 }
+.account-trigger svg { width: 34px; height: 34px; display: block; }
+
+/* Pinned to the right edge of the trigger so it never runs off a narrow
+   phone screen. */
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--bg);
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
+}
+.account-menu > * {
+  padding: 13px 16px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu > * + * { border-top: 1px solid rgba(0, 0, 0, .18); }
+.account-menu > *:active { background: rgba(0, 0, 0, .1); }
+.account-menu .is-danger { color: #7a0016; }
 
 .avatar-stage { display: flex; justify-content: center; }
 .avatar-large {
