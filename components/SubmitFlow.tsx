@@ -37,6 +37,11 @@ export function SubmitFlow({
   // dragging the trim slider) does not mint a fresh blob URL each time — and
   // revoked below whenever `file` changes or the component unmounts, so URLs
   // never outlive the file they point to.
+  // The container's duration is authoritative over the wall-clock estimate
+  // taken while recording; submitting the estimate can put trim_end past the
+  // real end, which the server rejects.
+  const handleMeasuredDuration = useCallback((seconds: number) => setDuration(seconds), [])
+
   // Stable identity so the Trimmer's reporting effect has nothing to react to.
   const handleTrimChange = useCallback(
     (start: number, end: number, valid: boolean) => setTrim({ start, end, valid }),
@@ -178,6 +183,7 @@ export function SubmitFlow({
           src={previewUrl}
           duration={duration}
           onChange={handleTrimChange}
+          onDuration={handleMeasuredDuration}
         />
       ) : (
         previewUrl && <img src={previewUrl} alt="Your proof" className="preview" />

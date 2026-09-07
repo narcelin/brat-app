@@ -6,7 +6,7 @@ import {
   adjustEnd, adjustStart, initialRange, timeFromPosition, type Range,
 } from '../lib/media/trim-range'
 
-const FRAME_COUNT = 8
+const FRAME_COUNT = 6
 
 /** Pulls stills off the recording for the filmstrip. Seeking and drawing is
  *  the only way to do this in a browser — there is no frame API — so it runs
@@ -27,13 +27,29 @@ function useFilmstrip(src: string, duration: number): string[] {
     const canvas = document.createElement('canvas')
     const shots: string[] = []
 
+    /** `seeked` fires when the seek completes, which is not the same as a
+     *  frame being decoded and ready to draw. Drawing on `seeked` alone
+     *  reliably captured the previous frame — every still came out identical.
+     *  Wait for HAVE_CURRENT_DATA, then one paint, before grabbing. */
     function seekTo(time: number): Promise<void> {
       return new Promise((resolve) => {
-        const onSeeked = () => {
+        let settled = false
+        const done = () => {
+          if (settled) return
+          settled = true
           video.removeEventListener('seeked', onSeeked)
-          resolve()
+          requestAnimationFrame(() => resolve())
+        }
+        const onSeeked = () => {
+          if (video.readyState >= 2) return done()
+          video.addEventListener('canplay', done, { once: true })
         }
         video.addEventListener('seeked', onSeeked)
+        // A container without seek cues can leave `seeked` unfired. Bounded
+        // low: six frames each waiting the full timeout is the worst case, and
+        // the strip renders blanks until they arrive, so a slow grab must not
+        // leave the player staring at placeholders.
+        setTimeout(done, 350)
         video.currentTime = time
       })
     }
@@ -77,16 +93,24 @@ function useFilmstrip(src: string, duration: number): string[] {
 
 export function Trimmer({
   src,
-  duration,
+  duration: reportedDuration,
   onChange,
+  onDuration,
 }: {
   src: string
+  /** Wall-clock time measured while recording. Treated as a fallback: the
+   *  container's own duration is authoritative and the two differ, sometimes
+   *  by hundreds of milliseconds. Trimming against the wrong one produces a
+   *  range ending past the real end, which the server then rejects. */
   duration: number
   onChange: (start: number, end: number, valid: boolean) => void
+  onDuration?: (seconds: number) => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
-  const [range, setRange] = useState<Range>(() => initialRange(duration))
+  const [measured, setMeasured] = useState<number | null>(null)
+  const duration = measured ?? reportedDuration
+  const [range, setRange] = useState<Range>(() => initialRange(reportedDuration))
   const [dragging, setDragging] = useState<'start' | 'end' | null>(null)
 
   const frames = useFilmstrip(src, duration)
@@ -99,9 +123,47 @@ export function Trimmer({
   // "stopping the recording does nothing", because the review screen crashed
   // the moment it mounted.
   const onChangeRef = useRef(onChange)
+  const onDurationRef = useRef(onDuration)
   useEffect(() => {
     onChangeRef.current = onChange
+    onDurationRef.current = onDuration
   })
+
+  // MediaRecorder output reports `duration: Infinity` until the whole blob is
+  // buffered — and MediaRecorder is exactly what this app records with. So the
+  // duration is watched rather than read once, or it is always still Infinity
+  // at the moment metadata arrives.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const read = () => {
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        setMeasured(video.duration)
+      }
+    }
+
+    read()
+    video.addEventListener('durationchange', read)
+    video.addEventListener('loadedmetadata', read)
+    video.addEventListener('canplaythrough', read)
+    return () => {
+      video.removeEventListener('durationchange', read)
+      video.removeEventListener('loadedmetadata', read)
+      video.removeEventListener('canplaythrough', read)
+    }
+  }, [src])
+
+  // Re-clamp to the real duration once it is known, so a range built against
+  // the wall-clock estimate cannot end past the end of the recording.
+  useEffect(() => {
+    if (measured === null) return
+    setRange((current) => ({
+      start: Math.min(current.start, Math.max(measured - 0.1, 0)),
+      end: Math.min(current.end, measured),
+    }))
+    onDurationRef.current?.(measured)
+  }, [measured])
 
   useEffect(() => {
     onChangeRef.current(range.start, range.end, validateTrim(range.start, range.end, duration).ok)
@@ -150,12 +212,34 @@ export function Trimmer({
     }
   }, [dragging, move])
 
+  // A paused video with only metadata loaded has decoded no frame, so it
+  // paints black until something forces a seek — which is why the preview
+  // only appeared once a handle was dragged. Seek once on load to show the
+  // start frame. Exactly 0 is avoided: currentTime is already 0, so assigning
+  // it fires no seek and nothing decodes.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || seededRef.current) return
+
+    const show = () => {
+      if (seededRef.current) return
+      seededRef.current = true
+      video.currentTime = Math.min(Math.max(range.start, 0.05), Math.max(duration - 0.05, 0.05))
+    }
+
+    if (video.readyState >= 1) show()
+    else video.addEventListener('loadedmetadata', show, { once: true })
+
+    return () => video.removeEventListener('loadedmetadata', show)
+  }, [range.start, duration])
+
   const pct = (t: number) => `${(t / Math.max(duration, 0.001)) * 100}%`
   const selected = range.end - range.start
 
   return (
     <div className="trimmer">
-      <video ref={videoRef} src={src} playsInline muted preload="metadata" className="preview" />
+      <video ref={videoRef} src={src} playsInline muted preload="auto" className="preview" />
 
       <div className="filmstrip" ref={trackRef}>
         <div className="filmstrip-frames" aria-hidden="true">
