@@ -38,8 +38,14 @@ waiting game, and there is no way to advance a week without editing the database
 - [x] Admin role on a player (Clerk `publicMetadata`, checked server-side — never
       trust a client claim)
 - [ ] Admin screen: create and edit a week's three objectives and their tiers
-      (not built — objectives are still seeded by SQL, which is fine until
-      draft day produces the real ones)
+      — **deliberately not building this** (decided 2026-09-08). The 24
+      placeholder objectives already exist, 3 per week with one of each tier,
+      so draft day is a rename rather than a create. Applying 24 titles by hand
+      once does not justify an editor. Revisit if season 2 needs it.
+
+      Renaming an objective that already has submissions relabels proof people
+      have posted — week 1 had submissions as of this decision, weeks 2-8 were
+      empty.
 - [x] **Advance the week manually** — force `SUBMITTING → VOTING → CLOSED`
       rather than waiting on timestamps. `weekState()` stays the fallback when
       no manual override is set, so the game still runs itself if nobody
