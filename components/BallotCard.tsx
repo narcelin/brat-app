@@ -11,6 +11,7 @@ export function BallotCard({
   objective,
   viewerId,
   readOnly = false,
+  revealNames,
 }: {
   objective: BallotObjective
   viewerId: string
@@ -19,6 +20,16 @@ export function BallotCard({
    *  that can only ever produce an error. Show the proof and what the viewer
    *  said, and nothing they can press. */
   readOnly?: boolean
+  /** Whether entrants are attributed. False while voting, so the proof is
+   *  judged before the name is read — reading the name first is where
+   *  popularity bias actually bites. True once the week settles, since the
+   *  standings name medal winners anyway and knowing who did the unhinged one
+   *  is most of the payoff.
+   *
+   *  Separate from `readOnly` rather than derived from it: they happen to
+   *  coincide today, but one is about what you may press and the other about
+   *  what you may see. */
+  revealNames: boolean
 }) {
   const router = useRouter()
   const [ranking, setRanking] = useState<string[]>(objective.myRanking)
@@ -91,10 +102,12 @@ export function BallotCard({
       {objective.isRatify ? (
         <div className="stack">
           <div className="ballot-entry">
-            <div className="ballot-who">
-              <Avatar seed={lone.avatarSeed} className="roster-face" />
-              <b>{lone.displayName}</b>
-            </div>
+            {revealNames && (
+              <div className="ballot-who">
+                <Avatar seed={lone.avatarSeed} className="roster-face" />
+                <b>{lone.displayName}</b>
+              </div>
+            )}
             <ProofPlayer
               pathname={lone.mediaPathname}
               mediaType={lone.mediaType}
@@ -145,17 +158,31 @@ export function BallotCard({
               ? 'This week is settled — voting is over.'
               : `Tap in order — best first. ${check.ok ? 'Ready to save.' : check.reason}`}
           </p>
+          {!revealNames && (
+            <p className="status">Names are hidden until voting closes.</p>
+          )}
 
           {objective.entrants.map((entrant) => {
             const position = ranking.indexOf(entrant.userId)
             const isSelf = entrant.userId === viewerId
             return (
               <div key={entrant.userId} className="ballot-entry">
-                <div className="ballot-who">
-                  <Avatar seed={entrant.avatarSeed} className="roster-face" />
-                  <b>{entrant.displayName}</b>
-                  {isSelf && <span className="roster-you"> you</span>}
-                </div>
+                {/* Your own entry stays marked even while names are hidden:
+                    it cannot be ranked, and an unrankable card with no
+                    explanation just looks broken. */}
+                {(revealNames || isSelf) && (
+                  <div className="ballot-who">
+                    {revealNames && (
+                      <>
+                        <Avatar seed={entrant.avatarSeed} className="roster-face" />
+                        <b>{entrant.displayName}</b>
+                      </>
+                    )}
+                    {isSelf && (
+                      <span className="roster-you">{revealNames ? ' you' : 'your proof'}</span>
+                    )}
+                  </div>
+                )}
                 <ProofPlayer
                   pathname={entrant.mediaPathname}
                   mediaType={entrant.mediaType}

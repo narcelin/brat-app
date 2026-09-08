@@ -5,6 +5,7 @@ import {
 } from '../domain/week-state'
 import { parseSeed, seedFromPlayerId } from '../domain/avatar'
 import { isRatifyObjective } from '../domain/ballot'
+import { shuffleEntrants } from '../domain/ballot-order'
 
 export interface WeekRow {
   week_id: number
@@ -327,6 +328,11 @@ export function shapeBallot(rows: BallotRow[], viewerId: string): BallotObjectiv
     objective.myRanking = (rankings.get(objective.objectiveId) ?? [])
       .sort((a, b) => a.place - b.place)
       .map((r) => r.userId)
+    // Shuffled here rather than in SQL so the order is stable for a voter
+    // across reloads, and testable without a database. The rows arrive in
+    // submission-id order, which would otherwise put whoever posted first on
+    // top of every objective for everyone.
+    objective.entrants = shuffleEntrants(objective.entrants, viewerId, objective.objectiveId)
   }
 
   return [...byObjective.values()]

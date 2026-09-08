@@ -47,6 +47,7 @@ export default async function VotePage() {
             objective={objective}
             viewerId={player.id}
             readOnly={week.state === 'CLOSED'}
+            revealNames={week.state === 'CLOSED'}
           />
         ))
       )}
