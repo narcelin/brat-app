@@ -662,6 +662,14 @@ footer { margin-top: auto; }
   display: block;
 }
 
+/* Participation count. Dimmer and smaller than the medal row on purpose: it
+   counts turning up, not placing, and must not read as a fourth medal. */
+.standings-entries {
+  font-size: 13px;
+  opacity: .6;
+  white-space: nowrap;
+}
+
 /* --- Standings ----------------------------------------------------------- */
 
 .standings { margin: 0; padding: 0; list-style: none; }

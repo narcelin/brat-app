@@ -24,6 +24,13 @@ export interface Standing {
   golds: number
   silvers: number
   bronzes: number
+  /** How many objectives this player has posted proof for, across every week
+   *  that has dropped — not only the scored ones the medals come from.
+   *
+   *  Deliberately decorative: it never touches points, medals or the sort.
+   *  It is drawn from a wider set of weeks than the scoring is, so letting it
+   *  reach the ranking would leak an unscored week into the table. */
+  entries: number
 }
 
 /** Recomputed from votes every time rather than stored, so a miscast vote is
@@ -31,6 +38,10 @@ export interface Standing {
 export function buildStandings(
   objectives: ScoredObjectiveInput[],
   players: PlayerRow[],
+  /** Objectives posted for, keyed by user id. Required rather than defaulted:
+   *  an omitted map would silently report every player as having posted
+   *  nothing, which reads as a real result rather than a missing argument. */
+  entriesByUser: Map<string, number>,
 ): Standing[] {
   const standings = new Map<string, Standing>(
     players.map((p) => [
@@ -43,6 +54,7 @@ export function buildStandings(
         golds: 0,
         silvers: 0,
         bronzes: 0,
+        entries: entriesByUser.get(p.id) ?? 0,
       },
     ]),
   )
@@ -91,6 +103,24 @@ export async function getStandings(seasonId: number, now: Date = new Date()): Pr
   const players = (await sql`
     SELECT id, display_name, avatar_seed FROM users
   `) as PlayerRow[]
+
+  // Counted in its own query rather than from the scoring rows below, which
+  // are filtered to weeks that have finished voting. Widening that filter to
+  // pick participation up would feed unscored weeks into the medals.
+  //
+  // No date filter is needed: a submission can only exist for a week that was
+  // open for submitting (the API checks canSubmit before writing), so the
+  // rows themselves already carry the "week has dropped" condition. That also
+  // keeps this clear of forced-state and clock precedence entirely.
+  const entryRows = (await sql`
+    SELECT s.user_id, count(DISTINCT s.objective_id)::int AS entries
+    FROM submissions s
+    JOIN objectives o ON o.id = s.objective_id
+    JOIN weeks w ON w.id = o.week_id AND w.season_id = ${seasonId}
+    GROUP BY s.user_id
+  `) as { user_id: string; entries: number }[]
+
+  const entriesByUser = new Map(entryRows.map((r) => [r.user_id, r.entries]))
 
   // votes and ratifications are both joined only on objective_id (neither
   // joins to the submissions row), so a multi-entrant objective's rows are
@@ -176,5 +206,5 @@ export async function getStandings(seasonId: number, now: Date = new Date()): Pr
     }))
   }
 
-  return buildStandings([...byObjective.values()], players)
+  return buildStandings([...byObjective.values()], players, entriesByUser)
 }

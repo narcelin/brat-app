@@ -46,6 +46,14 @@ export default async function LeaderboardPage() {
             <span className="standings-medals">
               {standing.golds}🥇 {standing.silvers}🥈 {standing.bronzes}🥉
             </span>
+            {/* Participation, not achievement — kept visually quieter than the
+                medals so it never reads as a fourth place above bronze. */}
+            <span
+              className="standings-entries"
+              title={`${standing.entries} ${standing.entries === 1 ? 'objective' : 'objectives'} posted`}
+            >
+              📸 {standing.entries}
+            </span>
             <b className="standings-points">{standing.points}</b>
           </li>
         ))}
