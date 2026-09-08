@@ -35,6 +35,29 @@ CREATE TABLE IF NOT EXISTS weeks (
   CHECK (drops_at < submissions_close_at AND submissions_close_at < voting_closes_at)
 );
 
+-- Two weeks in one season must never overlap. getCurrentWeek takes the most
+-- recently dropped week, so an overlapping week silently shadows the earlier
+-- one: its objectives unreachable for the rest of the season, nothing logged.
+-- That happened once (weeks 3 and 4, fourteen minutes apart) and was repaired
+-- by migration 008; this makes it impossible rather than merely fixed.
+--
+-- btree_gist provides the `=` operator class for season_id, scoping the
+-- exclusion per season so separate seasons may overlap freely. The range is
+-- half-open, so one week ending at the exact instant the next drops is
+-- allowed — which is how consecutive weeks are already scheduled.
+--
+-- DROP then ADD because ADD CONSTRAINT has no IF NOT EXISTS, and db/apply.mjs
+-- refuses the dollar-quoted DO block that would otherwise guard it.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE weeks DROP CONSTRAINT IF EXISTS weeks_no_overlap;
+
+ALTER TABLE weeks ADD CONSTRAINT weeks_no_overlap
+  EXCLUDE USING gist (
+    season_id WITH =,
+    tstzrange(drops_at, voting_closes_at, '[)') WITH &&
+  );
+
 CREATE TABLE IF NOT EXISTS objectives (
   id          SERIAL PRIMARY KEY,
   week_id     INTEGER NOT NULL REFERENCES weeks(id) ON DELETE CASCADE,
