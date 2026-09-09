@@ -96,9 +96,35 @@ a full season reset.
       under them, and `validateBallot` requires a ballot exactly as long as the
       entrant count. Probably restrict to SUBMITTING.
 
-      Note this is *not* admin moderation — nobody can remove someone else's
-      proof. If an entry needs removing and its owner will not, that is a
-      separate control and a separate decision.
+      Distinct from admin removal below: this is the owner tidying up after
+      themselves, and needs no judgement call.
+
+- [ ] **Admin removal of any submission.** For when something needs to come
+      down and its owner will not, or cannot, take it down — genuinely
+      offensive content, something that outs a person who did not consent to
+      being filmed, or an entry that plainly breaks the objective.
+
+      Shares its machinery with player self-delete (row, blob, and the votes
+      cast for it), so build that first and widen it. What differs is
+      everything around it:
+
+      - **It must be visible.** Silent removal by an organiser who is also a
+        competitor is indistinguishable from removing a rival. The entrant
+        should know their proof was taken down, and ideally the group should
+        see that something was removed rather than the entry simply vanishing.
+      - **Allowed after voting opens**, unlike self-delete — the cases that
+        justify it mostly surface once everyone can see the proof. That means
+        accepting the ballot problem self-delete avoids: `validateBallot`
+        requires a ballot exactly as long as the entrant count, so removing an
+        entrant mid-vote invalidates saved ballots. Decide whether those
+        ballots are truncated, re-prompted, or the objective is voided.
+      - **Never a scoring tool.** Removing an entry changes who medals. Pair it
+        with the rule in "Deliberately not building" below: it exists for
+        content that should not be up, not for results the organiser dislikes.
+
+      Worth deferring until something actually needs removing. Sixteen friends
+      is a context where a message in the group chat usually settles it, and a
+      power that rescores a week is worth not having until it is needed.
 
 - [ ] **Nudge list — who has not posted, and who has not voted, by name.**
       Turnout gives counts (`3/5`); chasing people in the group chat needs
