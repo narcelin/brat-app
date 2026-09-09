@@ -1,10 +1,9 @@
-import { notFound } from 'next/navigation'
-import { currentPlayer } from '../../lib/auth/current-player'
+
+import { requirePlayer } from '../../lib/auth/current-player'
 import { AvatarPicker } from '../../components/AvatarPicker'
 
 export default async function MePage() {
-  const player = await currentPlayer()
-  if (!player) notFound()
+  const player = await requirePlayer()
 
   return (
     <main className="screen">

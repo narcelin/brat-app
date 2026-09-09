@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { currentPlayer } from '../lib/auth/current-player'
+import { currentAccess } from '../lib/auth/current-player'
 import { getCurrentWeek } from '../lib/db/queries'
 import { canSubmit } from '../lib/domain/submission-rules'
 import { ObjectiveCard } from '../components/ObjectiveCard'
@@ -7,9 +7,13 @@ import { WeekStatus } from '../components/WeekStatus'
 import { SignInButton } from '@clerk/nextjs'
 
 export default async function ThisWeekPage() {
-  const player = await currentPlayer()
+  const access = await currentAccess()
 
-  if (!player) {
+  // Signed in without an invite: the gate, not a sign-in prompt they have
+  // already completed.
+  if (access.state === 'unadmitted') redirect('/join')
+
+  if (access.state === 'signed-out') {
     return (
       <main className="screen">
         <header>
@@ -22,6 +26,8 @@ export default async function ThisWeekPage() {
       </main>
     )
   }
+
+  const player = access.player
 
   // First run: a player with no avatar appears on the roster as a face they
   // never chose, so rolling one comes before anything else.

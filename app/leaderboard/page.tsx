@@ -1,12 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
-import { currentPlayer } from '../../lib/auth/current-player'
+import { requirePlayer } from '../../lib/auth/current-player'
 import { sql } from '../../lib/db/client'
 import { getStandings } from '../../lib/db/standings'
 import { Avatar } from '../../components/Avatar'
 
 export default async function LeaderboardPage() {
-  const player = await currentPlayer()
-  if (!player) notFound()
+  const player = await requirePlayer()
   if (player.avatarSeed === null) redirect('/welcome')
 
   const [season] = (await sql`

@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { currentPlayer } from '../../../lib/auth/current-player'
+import { requirePlayer } from '../../../lib/auth/current-player'
 import { getCurrentWeek, getObjectiveRoster } from '../../../lib/db/queries'
 import { canSubmit } from '../../../lib/domain/submission-rules'
 import { medalsFor } from '../../../lib/domain/tiers'
@@ -17,8 +17,7 @@ export default async function ObjectivePage({
   const { id } = await params
   const objectiveId = Number(id)
 
-  const player = await currentPlayer()
-  if (!player) notFound()
+  const player = await requirePlayer()
 
   if (player.avatarSeed === null) redirect('/welcome')
 

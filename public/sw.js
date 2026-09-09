@@ -9,7 +9,7 @@
 // client-side router navigation is not `mode: 'navigate'`, it is a plain fetch
 // of `/?_rsc=...`, so it fell through to the cache-first branch and was cached
 // permanently. A stale week is worse than an honest network error.
-const CACHE = 'brat-v29';
+const CACHE = 'brat-v30';
 
 // Content-addressed or genuinely static, and identical for every player.
 const SHELL = [

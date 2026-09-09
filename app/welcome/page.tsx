@@ -1,10 +1,9 @@
-import { notFound, redirect } from 'next/navigation'
-import { currentPlayer } from '../../lib/auth/current-player'
+import { redirect } from 'next/navigation'
+import { requirePlayer } from '../../lib/auth/current-player'
 import { AvatarPicker } from '../../components/AvatarPicker'
 
 export default async function WelcomePage() {
-  const player = await currentPlayer()
-  if (!player) notFound()
+  const player = await requirePlayer()
 
   // Already rolled: nothing to onboard. Sending them here again would be a
   // dead end they cannot leave by going forward.

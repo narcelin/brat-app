@@ -1,11 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
-import { currentPlayer } from '../../lib/auth/current-player'
+import { requirePlayer } from '../../lib/auth/current-player'
 import { getBallot, getCurrentWeek } from '../../lib/db/queries'
 import { BallotCard } from '../../components/BallotCard'
 
 export default async function VotePage() {
-  const player = await currentPlayer()
-  if (!player) notFound()
+  const player = await requirePlayer()
   if (player.avatarSeed === null) redirect('/welcome')
 
   const week = await getCurrentWeek(player.id)

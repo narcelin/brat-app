@@ -705,6 +705,12 @@ footer { margin-top: auto; }
   color: var(--ink);
 }
 
+.invite-new { display: grid; gap: 2px; margin-bottom: 12px; }
+.invite-link { word-break: break-all; font-size: 12px; }
+.invite-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.invite-actions .btn { padding: 6px 10px; font-size: 13px; }
+.is-spent { opacity: .5; }
+
 /* --- Admin turnout --------------------------------------------------------- */
 
 .turnout { margin: 8px 0 0; padding: 0; list-style: none; }

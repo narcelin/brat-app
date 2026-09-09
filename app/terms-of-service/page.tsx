@@ -49,8 +49,10 @@ export default function TermsOfServicePage() {
           <ul>
             <li>You must be 18 or older to use Brapids.</li>
             <li>
-              Access is invite-only. There is no public sign-up — you need an invitation from
-              the operator to create an account.
+              The game is invite-only. Anyone can create an account, but an account on its
+              own gives you nothing: you need a current invite code from the operator before
+              you can see or take part in a season. Codes expire and have a limited number of
+              uses.
             </li>
             <li>
               You&apos;re responsible for making sure your use of the app complies with any laws

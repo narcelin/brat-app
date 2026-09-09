@@ -1,18 +1,21 @@
 import { notFound } from 'next/navigation'
-import { currentPlayer } from '../../lib/auth/current-player'
+import { requirePlayer } from '../../lib/auth/current-player'
 import { isAdmin } from '../../lib/auth/is-admin'
 import { sql } from '../../lib/db/client'
 import { getCurrentWeek } from '../../lib/db/queries'
+import { listInvites } from '../../lib/db/invites'
 import { getTurnout } from '../../lib/db/turnout'
+import { headers } from 'next/headers'
+import { AdminInvites } from '../../components/AdminInvites'
 import { AdminReset } from '../../components/AdminReset'
 import { AdminWeekControls } from '../../components/AdminWeekControls'
 import { LocalTime } from '../../components/LocalTime'
 
 export default async function AdminPage() {
-  const player = await currentPlayer()
+  const player = await requirePlayer()
   // notFound rather than a "forbidden" page: a non-admin should not learn that
   // an admin screen exists here.
-  if (!player || !(await isAdmin())) notFound()
+  if (!(await isAdmin())) notFound()
 
   const week = await getCurrentWeek(player.id)
   if (!week) {
@@ -24,6 +27,22 @@ export default async function AdminPage() {
   }
 
   const turnout = await getTurnout(week.id)
+
+  const now = new Date()
+  const invites = await listInvites()
+  const inviteViews = invites.map((i) => ({
+    code: i.code,
+    expiresAt: i.expiresAt.toISOString().slice(0, 10),
+    maxUses: i.maxUses,
+    uses: i.uses,
+    revoked: i.revokedAt !== null,
+    live: i.revokedAt === null && i.expiresAt > now && i.uses < i.maxUses,
+  }))
+
+  // Built from the request rather than hardcoded, so the copied link is
+  // correct on the preview deployments as well as the custom domain.
+  const host = (await headers()).get('host') ?? 'brats.anico.dev'
+  const origin = `https://${host}`
 
   const [counts] = (await sql`
     SELECT count(*)::int AS submissions
@@ -75,6 +94,8 @@ export default async function AdminPage() {
           </ul>
         </section>
       )}
+
+      <AdminInvites invites={inviteViews} origin={origin} />
 
       <AdminReset submissions={counts.submissions} />
     </main>
