@@ -52,11 +52,16 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 ALTER TABLE weeks DROP CONSTRAINT IF EXISTS weeks_no_overlap;
 
+-- DEFERRABLE so a whole season can be rescheduled in one transaction. Weeks
+-- are contiguous, so shifting the season by any amount under a week makes the
+-- first moved row overlap the next unmoved one; checked immediately, every
+-- reschedule fails. INITIALLY IMMEDIATE keeps ordinary bad writes failing at
+-- once — only a transaction that asks for DEFERRED postpones the check.
 ALTER TABLE weeks ADD CONSTRAINT weeks_no_overlap
   EXCLUDE USING gist (
     season_id WITH =,
     tstzrange(drops_at, voting_closes_at, '[)') WITH &&
-  );
+  ) DEFERRABLE INITIALLY IMMEDIATE;
 
 CREATE TABLE IF NOT EXISTS objectives (
   id          SERIAL PRIMARY KEY,

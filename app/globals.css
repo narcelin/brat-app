@@ -686,6 +686,25 @@ footer { margin-top: auto; }
 .standings-medals { font-size: 13px; opacity: .75; white-space: nowrap; }
 .standings-points { font-size: 18px; min-width: 44px; text-align: right; }
 
+/* The reset block. Visually separated from the week controls so it never
+   reads as just another admin action. */
+.admin-danger {
+  border: 2px solid #b3261e;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 28px;
+}
+.admin-input {
+  width: 100%;
+  font: inherit;
+  padding: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  margin: 6px 0 10px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
 /* --- Admin turnout --------------------------------------------------------- */
 
 .turnout { margin: 8px 0 0; padding: 0; list-style: none; }
