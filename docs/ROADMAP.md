@@ -75,6 +75,71 @@ Proves people will judge. This is where the game becomes a game.
       puts every upload on a new key, so each replacement orphaned a file that
       nothing referenced and nobody could reach
 
+## Phase 2.5 — Running a live season
+
+Agreed 2026-09-09. None of this is built. These are the controls a season with
+real players needs and season 0 did not, ordered by when they will first hurt.
+Shipped so far: force the week forward, clear an override, turnout counts, and
+a full season reset.
+
+- [ ] **Let a player delete their own submission.** Self-service, for the wrong
+      video, a duplicate, or something posted and regretted. Today the only
+      remedy is replacing it, which still needs a second recording.
+
+      Must delete the row, its blob, **and every vote cast for it**. Votes
+      reference `objectives` and `users`, not `submissions`, so they do not
+      cascade — left behind they score proof that no longer exists. Same trap
+      the season reset had to handle explicitly.
+
+      Open question: whether deleting is allowed once voting has opened.
+      Withdrawing an entry after people have ranked it changes their ballots
+      under them, and `validateBallot` requires a ballot exactly as long as the
+      entrant count. Probably restrict to SUBMITTING.
+
+      Note this is *not* admin moderation — nobody can remove someone else's
+      proof. If an entry needs removing and its owner will not, that is a
+      separate control and a separate decision.
+
+- [ ] **Nudge list — who has not posted, and who has not voted, by name.**
+      Turnout gives counts (`3/5`); chasing people in the group chat needs
+      names. `getObjectiveRoster` already computes who has submitted, so this
+      is largely a display change; the not-yet-voted half needs the same shape
+      over `votes`/`ratifications`.
+
+- [ ] **Extend a deadline.** Move one week's `submissions_close_at` (and the
+      voting window with it) without touching the rest of the season. Today
+      the only way is to force SUBMITTING and remember to close it by hand.
+
+      Now possible because `weeks_no_overlap` is DEFERRABLE (migration 010) —
+      shifting a window past the next week's start needs the whole reschedule
+      to commit as one transaction with `SET CONSTRAINTS ... DEFERRED`.
+
+- [ ] **Reopen a closed week.** `canForceState` refuses every transition out of
+      CLOSED, and `canClearOverride` refuses to hand a closed week back to its
+      clock. That guard is correct and should not simply be removed.
+
+      Split it: reopening **voting** is comparatively safe. Reopening
+      **submissions** after reveal lets someone post having already seen
+      everyone else's proof, and should stay impossible.
+
+- [ ] **Mark a player inactive.** For someone who drops out mid-season.
+      Deleting the user cascades their submissions and votes and silently
+      rewrites finished weeks. A flag is the honest version: drop them from
+      turnout denominators and the standings going forward, leave past results
+      exactly as they were scored.
+
+- [ ] **Grant admin to another player.** Admin is Clerk `publicMetadata`
+      today, so promoting a co-organiser means a trip to the Clerk dashboard.
+      Low frequency — worth doing only if you actually want a second organiser.
+
+### Deliberately not building
+
+- **Editing medal values, tiers, or votes after the fact.** Each one lets the
+  organiser change results after seeing them, and the organiser is also a
+  competitor. The reset button is already the only way to destroy results;
+  keep it the only one.
+- **An admin objective editor** — see the entry under Phase 1.5.
+
 ## Phase 3 — Retention
 
 - [x] **Avatars** — rolled, not picked. Every feature (skin, hair style and
