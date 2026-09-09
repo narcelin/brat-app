@@ -165,6 +165,18 @@ a full season reset.
   competitor. The reset button is already the only way to destroy results;
   keep it the only one.
 - **An admin objective editor** — see the entry under Phase 1.5.
+- **A code prompt in front of sign-up** (decided 2026-09-09). Clerk owns
+  sign-up, and its hosted sign-up URL stays publicly reachable whatever our
+  page shows, so gating the button reorders the experience without preventing
+  a single account. Anyone who bypasses it lands on `/join` with no access.
+
+  Truly blocking account creation means Clerk restricted mode with per-email
+  invitations, which are bound to one address each — that trades the
+  shareable group-chat link for collecting sixteen email addresses. Not worth
+  it: free accounts see nothing, and the cost of one is a slot in Clerk's
+  free-tier user count.
+
+  Revisit only if junk accounts actually appear.
 
 ## Phase 3 — Retention
 
