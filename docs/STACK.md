@@ -110,9 +110,10 @@ no migration framework.
 
 | Branch | Used by | Contents | Connection string lives in |
 |---|---|---|---|
-| production (default) | The live site, and **preview deployments** | Real players, real submissions | Vercel env `DATABASE_URL`, pulled to `.env.local` |
+| production (default) | The live site | Real players, real submissions | Vercel env `DATABASE_URL`, pulled to `.env.local` |
 | `dev` | `npm run dev`, `npm run db:apply` | Seeded season, no real data | `.env.development.local`, by hand |
 | `test` | `npm run test:integration` only | Whatever the suite creates and tears down | `.env.test.local`, by hand |
+| `preview/<git-branch>` | One preview deployment | Copy-on-write clone of production | Injected at build time. Never stored as an env var |
 
 `dev` and `test` are **schema-only** branches — Neon copies the schema without
 the rows, so neither holds a copy of anyone's real submissions. `dev` is then
@@ -219,10 +220,44 @@ Through Git, since 2026-09-11:
 | Push to | Result |
 |---|---|
 | `main` | Production deploy, live on brats.anico.dev |
-| Any other branch | Preview deploy at its own URL — **wired to the production database**, see [Known gaps](#known-infrastructure-gaps) |
+| Any other branch | Preview deploy at its own URL, on its own Neon branch |
 
 `vercel --prod` from the laptop still works and still deploys production. It is
 now the fallback, not the routine — using both just deploys twice.
+
+### Preview branching
+
+Enabled 2026-09-11. Every preview deployment gets its own Neon branch, created
+by webhook when the deployment starts and named `preview/<git-branch>`.
+
+The connection variables are **injected into that deployment only** and never
+written to the project's environment variables. That is what makes this work at
+all: the Neon integration owns `DATABASE_URL` across Production, Preview and
+Development together, and Vercel will not accept a second variable of the same
+name overlapping those targets, so a plain per-environment override is not
+available. Injection sidesteps the conflict entirely.
+
+Configured in the Vercel dashboard — Storage → the Neon store → the project's
+**Configure** dialog — with no CLI or API equivalent at the time of writing:
+
+- **Require Active Resource Before Deploy** — on. The branch checkboxes are
+  disabled without it, because Vercel has to be willing to wait for the branch
+  to exist before the build starts. If a deploy ever hangs waiting on the
+  resource, this is why.
+- **Create Database Branch For Deployment → Preview** — ticked. **Production is
+  not, and must never be**: it would hand the live site a fresh branch on every
+  deploy.
+- Variable prefix empty, *Sensitive* off. Sensitive would stop `vercel env
+  pull` from reading values, which is how Clerk and Blob keys reach a laptop.
+
+Verified end to end rather than taken on trust: a throwaway branch was pushed,
+its build log printed the `DATABASE_URL` endpoint it was handed, and that
+endpoint matched the `preview/*` branch Neon had just created — not
+production's. Branch and deployment were then deleted.
+
+Because a preview branch is a copy-on-write clone, it holds **real
+submissions** pointing at **real media**. The database is isolated; the blob
+store is not. That is what `lib/blob/discard.ts` is for.
 
 ### CI
 
@@ -300,28 +335,12 @@ at import time.
 Ordered by what will hurt first. None of these are code defects; they are
 choices that have not been made yet.
 
-1. **Preview deployments still use the production database.** Local dev no
-   longer does (the `dev` branch, 2026-09-11), but Vercel's `DATABASE_URL` is
-   scoped to Production, Preview and Development alike, so a branch pushed to
-   GitHub gets a preview URL wired to live data — where it can create, edit and
-   delete real rows.
-
-   A plain env-var override cannot fix this: the Neon integration owns
-   `DATABASE_URL` across all three targets, and Vercel will not accept a second
-   variable of the same name overlapping them. The supported fix is Neon's
-   **automated preview branching**, which injects per-deployment credentials by
-   webhook at build time instead of storing an env var at all.
-
-   It is a **dashboard toggle** with no CLI or API equivalent: Vercel →
-   Storage → the Neon store → Connect Project → Advanced Options → Deployments
-   Configuration → enable **Preview**, plus *Resource must be active before
-   deployment*.
-
-   Two things to know before turning it on. Preview branches are copy-on-write
-   clones of **production data**, so each one holds real submissions — the
-   `lib/blob/discard.ts` guard exists because of that. And cleanup follows
-   Vercel's deployment retention policy, six months by default, so branches
-   outlive the pull requests that made them.
+1. **Preview branches accumulate.** Cleanup is tied to Vercel's deployment
+   retention policy — six months by default — so a Neon branch outlives the
+   pull request that made it by a long way. Nothing prunes them today. Delete
+   one by hand with `neon branches delete <id>`, or wire up a GitHub Action on
+   branch deletion if they ever pile up. The free plan's branch allowance is
+   the ceiling to watch.
 
 2. **The blob store is shared by every branch.** Neon's own object storage
    branches with the database; Vercel Blob does not. Guarded in code as of
