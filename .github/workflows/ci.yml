@@ -1,0 +1,45 @@
+# Runs on every push and pull request.
+#
+# Deliberately the UNIT suite only. It is designed to pass with no env files
+# and no database — see docs/TESTING.md — which is what lets this workflow run
+# with no secrets at all. The integration suite is not here on purpose: it
+# writes to a real Neon branch, and wiring it up would mean putting a database
+# connection string into GitHub secrets.
+#
+# Node is pinned to the version Vercel builds with, not the newest release.
+# CI catching something production would not (or missing something it would)
+# is worse than no CI.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+
+      # npm ci, not npm install: fails loudly if package-lock.json and
+      # package.json have drifted, rather than quietly resolving something
+      # different from what was tested locally.
+      - run: npm ci
+
+      # The unit suite does not typecheck, and `next build` is not run here,
+      # so without this a type error reaches production unchallenged.
+      - run: npm run typecheck
+
+      - run: npm test

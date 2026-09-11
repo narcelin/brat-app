@@ -1,5 +1,7 @@
 # Brat Olympics
 
+[![CI](https://github.com/narcelin/brat-app/actions/workflows/ci.yml/badge.svg)](https://github.com/narcelin/brat-app/actions/workflows/ci.yml)
+
 A weekly game for a group chat: three objectives drop, you record proof in the
 app, everyone ranks everyone else, the leaderboard updates.
 
@@ -31,6 +33,7 @@ Local development runs against a seeded Neon `dev` branch, not production —
 |---|---|
 | `npm run dev` | Local dev server |
 | `npm test` | Unit suite — pure functions and route handlers, no database |
+| `npm run typecheck` | `tsc --noEmit`. Runs in CI alongside the unit suite |
 | `npm run test:integration` | Integration suite — requires a disposable Neon branch |
 | `npm run db:apply` | Apply schema, seed and the dev marker to the `dev` branch |
 | `git push` | Deploy — `main` goes to production, any other branch gets a preview |

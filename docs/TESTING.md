@@ -7,6 +7,10 @@ Two suites, deliberately separated.
 Pure functions and route handlers with the database mocked. **Must pass with no
 env files present at all**, on a fresh clone and in CI. Nothing here does I/O.
 
+This is not a nicety: it is what lets `.github/workflows/ci.yml` run on every
+push with no secrets configured. Give a unit test a real database dependency
+and CI needs a connection string, so keep the I/O in the integration suite.
+
 `vitest.config.ts` explicitly excludes `tests/integration/**`. Without that,
 `npm test` would pick the integration files up and run them against whatever
 `DATABASE_URL` happened to be exported in the shell, with no guard in front.

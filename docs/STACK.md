@@ -216,12 +216,28 @@ Through Git, since 2026-09-11:
 `vercel --prod` from the laptop still works and still deploys production. It is
 now the fallback, not the routine — using both just deploys twice.
 
-Before the GitHub connection every deploy was a manual CLI push from one
-machine, with no preview environments, no CI and no off-machine copy of the
-history. Two of those three are now fixed; **there is still no CI**, so
-`npm test` runs only when someone remembers. A GitHub Action running the unit
-suite on push is the obvious next step — it needs no secrets, because the unit
-suite is designed to pass with no env files at all.
+### CI
+
+`.github/workflows/ci.yml` runs on every push and pull request: `npm ci`, then
+`npm run typecheck`, then `npm test`.
+
+It needs **no secrets**, because the unit suite is built to pass with no env
+files and no database. That property is worth protecting — the moment a unit
+test needs a connection string, this workflow needs a secret and every fork
+stops being able to run it.
+
+Two deliberate choices:
+
+- **Node is pinned to 24.x**, the version Vercel builds with, rather than the
+  newest release. CI passing on a runtime production does not use proves less
+  than it appears to.
+- **Typecheck is a separate step.** The unit suite does not typecheck and
+  `next build` is not run here, so without it a type error would reach
+  production unchallenged.
+
+The integration suite is **not** in CI. It writes to a real Neon branch, so
+adding it means putting a database connection string into GitHub secrets — a
+deliberate trade not yet made.
 
 `ServiceWorker.tsx` plus the `brat-vNN` cache name in `public/sw.js` mean a
 new deploy is picked up without anyone force-refreshing — **bump that cache
