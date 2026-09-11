@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   hasCameraApi,
+  hasMultipleCameras,
   isStandalone,
   pickMimeType,
   MAX_PHOTO_EDGE,
@@ -159,5 +160,27 @@ describe('isStandalone', () => {
 
   it('survives a window without matchMedia', () => {
     expect(isStandalone({})).toBe(false)
+  })
+})
+
+describe('hasMultipleCameras', () => {
+  const cam = { kind: 'videoinput' }
+  const mic = { kind: 'audioinput' }
+  const speaker = { kind: 'audiooutput' }
+
+  it('offers the flip when there are two cameras', () => {
+    expect(hasMultipleCameras([cam, cam, mic])).toBe(true)
+  })
+
+  // A laptop with one camera and several audio devices must not get a flip
+  // button: flipping stops the current camera first, so a flip with nowhere
+  // to go costs the player their preview.
+  it('does not count microphones or speakers as cameras', () => {
+    expect(hasMultipleCameras([cam, mic, mic, speaker])).toBe(false)
+    expect(hasMultipleCameras([mic, speaker])).toBe(false)
+  })
+
+  it('handles an empty device list', () => {
+    expect(hasMultipleCameras([])).toBe(false)
   })
 })

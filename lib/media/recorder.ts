@@ -94,3 +94,16 @@ export function isStandalone(win: StandaloneWindow): boolean {
     nav?.standalone === true
   )
 }
+
+/** Whether there is a second camera worth offering a flip to.
+ *
+ *  Counted rather than assumed: a laptop has one, and offering a control that
+ *  cannot do anything is worse than not offering it — flipping stops the
+ *  current camera before requesting the next, so a flip with nowhere to go
+ *  costs the player their live preview.
+ *
+ *  `kind` is the only field that can be trusted before permission is granted;
+ *  labels are empty until then. */
+export function hasMultipleCameras(devices: readonly { kind: string }[]): boolean {
+  return devices.filter((d) => d.kind === 'videoinput').length > 1
+}

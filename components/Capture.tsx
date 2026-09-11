@@ -9,6 +9,7 @@ import {
   canStopRecording,
   isVideoFrameReady,
   hasCameraApi,
+  hasMultipleCameras,
   isStandalone,
 } from '../lib/media/recorder'
 import { MAX_RECORDING_SECONDS } from '../lib/domain/trim'
@@ -33,6 +34,13 @@ export function Capture({
   const [needsTap, setNeedsTap] = useState(false)
   const [live, setLive] = useState(false)
   const [mode, setMode] = useState<'photo' | 'video'>('video')
+  const [facing, setFacing] = useState<'environment' | 'user'>('environment')
+  const [canFlip, setCanFlip] = useState(false)
+  // The last facing that actually produced a stream. A device can advertise a
+  // camera it will not open, and by then the previous one is already stopped —
+  // phones will not hand out two at once — so a failed flip has to have
+  // somewhere known-good to fall back to.
+  const lastGoodFacing = useRef<'environment' | 'user'>('environment')
   // Set when in-app capture is impossible here and the native camera is the
   // only route left.
   const [useNativeCamera, setUseNativeCamera] = useState(false)
@@ -55,6 +63,13 @@ export function Capture({
       }
     }
 
+    // Release the current camera before asking for the other one. A phone
+    // will not open both at once, so requesting the second while the first is
+    // live simply fails.
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setLive(false)
+
     // A hung permission prompt resolves neither way on some iOS builds, and
     // "Starting camera…" forever tells the player nothing they can act on.
     const timeout = setTimeout(() => {
@@ -63,7 +78,7 @@ export function Capture({
 
     try {
       navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'environment' }, audio: true })
+        .getUserMedia({ video: { facingMode: facing }, audio: true })
         .then((stream) => {
           clearTimeout(timeout)
           if (cancelled) {
@@ -71,14 +86,36 @@ export function Capture({
             return
           }
           streamRef.current = stream
+          lastGoodFacing.current = facing
           // Held in state as well as a ref: the element may not be mounted
           // when this resolves, and a ref write alone would never re-run the
           // attach.
           setStream(stream)
+
+          // Only offer the flip when there is somewhere to flip to. Labels
+          // need permission, which by here we have; if the query fails the
+          // button is simply not shown rather than shown and broken.
+          navigator.mediaDevices
+            .enumerateDevices()
+            .then((devices) => {
+              if (cancelled) return
+              setCanFlip(hasMultipleCameras(devices))
+            })
+            .catch(() => {})
         })
         .catch((err: unknown) => {
           clearTimeout(timeout)
           if (cancelled) return
+
+          // A flip that failed: the old camera is already stopped, so go back
+          // to the one that worked rather than leaving a dead preview. Cannot
+          // loop — the fallback is a facing that has already succeeded once.
+          if (facing !== lastGoodFacing.current) {
+            setError(null)
+            setFacing(lastGoodFacing.current)
+            return
+          }
+
           // A denial is the player's to fix; anything else means in-app
           // capture is not going to work here, so offer the native camera.
           const denied = err instanceof DOMException && err.name === 'NotAllowedError'
@@ -99,7 +136,7 @@ export function Capture({
       mountedRef.current = false
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [facing])
 
   // Attaching the stream is not enough to make it visible. `autoPlay` does not
   // reliably fire for a srcObject assigned after mount, and React does not
@@ -313,7 +350,18 @@ export function Capture({
 
   return (
     <div className="sheet-body">
-      <video ref={videoRef} autoPlay playsInline muted className="sheet-video" />
+      {/* Mirrored only in preview, the way every phone camera behaves: you
+          expect your reflection while framing. The capture itself is not
+          flipped — drawImage reads the raw frames, so a canvas photo and the
+          recorded video both come out the right way round, matching what the
+          platform camera app saves. */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`sheet-video${facing === 'user' ? ' is-mirrored' : ''}`}
+      />
 
       {!live && (
         <p className="sheet-message">
@@ -324,6 +372,18 @@ export function Capture({
       <button className="sheet-close" onClick={onCancel} aria-label="Close camera">
         ✕
       </button>
+
+      {/* Hidden while recording: flipping stops the stream the recorder is
+          writing from, which would end the take mid-way. */}
+      {canFlip && !recording && (
+        <button
+          className="sheet-flip"
+          onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
+          aria-label={facing === 'environment' ? 'Switch to front camera' : 'Switch to back camera'}
+        >
+          ⟳
+        </button>
+      )}
 
       {recording && (
         <p className="sheet-timer">
