@@ -1,11 +1,13 @@
 'use client'
 
+import { useClerk } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { CODE_LENGTH, normalizeCode } from '../lib/domain/invite'
 
 export function JoinForm({ initialCode }: { initialCode: string }) {
   const router = useRouter()
+  const { signOut } = useClerk()
   const [code, setCode] = useState(initialCode)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +58,21 @@ export function JoinForm({ initialCode }: { initialCode: string }) {
       {error && <p className="status admin-error">{error}</p>}
       <button className="btn" disabled={busy || !looksComplete} onClick={join}>
         {busy ? 'Checking…' : 'Join the game'}
+      </button>
+
+      {/* Without this the gate is a trap. Every other route sends an
+          un-admitted account straight back here, so someone signed in on the
+          wrong account — or with no code at all — had nothing to press and no
+          way out but clearing site data. */}
+      <p className="status">
+        Wrong account, or no code? Sign out and you can use a different one.
+      </p>
+      <button
+        className="btn ghost"
+        disabled={busy}
+        onClick={() => signOut({ redirectUrl: '/join' })}
+      >
+        Sign out
       </button>
     </div>
   )
