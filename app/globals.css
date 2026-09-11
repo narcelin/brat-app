@@ -472,9 +472,16 @@ footer { margin-top: auto; }
   gap: 12px;
   overflow-y: auto;
 }
-.sheet-review-media { flex: 1; min-height: 0; display: flex; align-items: center; }
-.sheet-review-media > * { width: 100%; }
-.sheet-review .preview { aspect-ratio: auto; max-height: 52vh; background: #000; }
+/* Never shrink below the trimmer's own height. `flex: 1` with `min-height: 0`
+   let this box compress under the actions below it, and nothing clipped the
+   overflow — so the trim readout and the play button painted straight over
+   the status line and the Retake button. The sheet scrolls instead: content
+   that does not fit is reachable, not stacked on top of something else. */
+.sheet-review-media { flex: 0 0 auto; display: flex; align-items: center; }
+.sheet-review-media > * { width: 100%; min-width: 0; }
+/* Capped well below the viewport so the filmstrip, the readout and the first
+   action are visible together on a short phone without scrolling. */
+.sheet-review .preview { aspect-ratio: auto; max-height: 38vh; background: #000; }
 .sheet-review-actions { display: flex; flex-direction: column; gap: 10px; }
 .sheet-review .status { color: #fff; }
 .sheet-review label.status { color: #fff; }
