@@ -8,6 +8,7 @@ import { Trimmer } from './Trimmer'
 import { chooseSaveStrategy } from '../lib/media/save'
 import { MAX_UPLOAD_BYTES, validateTrim } from '../lib/domain/trim'
 import { submissionPathname } from '../lib/domain/submission-request'
+import { holdReload } from '../lib/pwa/reload-guard'
 
 /** Extension for the blob key. Only cosmetic — the server pins the directory
  *  and strips anything that is not alphanumeric. */
@@ -56,6 +57,12 @@ export function SubmitFlow({
     (start: number, end: number, valid: boolean) => setTrim({ start, end, valid }),
     [],
   )
+
+  // Held for the whole life of the capture sheet. A service-worker update
+  // reloads the page to shed stale code, and doing that mid-recording — or
+  // while a finished take sits unuploaded on the review screen — would throw
+  // the recording away with nothing to recover it from.
+  useEffect(() => holdReload(), [])
 
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
 
