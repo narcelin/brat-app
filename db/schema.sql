@@ -87,13 +87,18 @@ CREATE TABLE IF NOT EXISTS submissions (
   -- One entry per player per objective; re-submitting replaces.
   UNIQUE (objective_id, user_id),
   -- Photos carry no trim; videos must carry a complete, ordered one.
-  CHECK (
+  -- Named, so migrations can replace it: an inline CHECK gets a generated
+  -- name, and a migration that adds a differently-named replacement leaves
+  -- both in force.
+  CONSTRAINT submissions_media_shape CHECK (
     (media_type = 'photo' AND trim_start IS NULL AND trim_end IS NULL)
     OR
     (media_type = 'video' AND trim_start IS NOT NULL AND trim_end IS NOT NULL
      AND trim_start >= 0 AND trim_end > trim_start
      AND trim_end - trim_start <= 15
-     AND duration_seconds IS NOT NULL AND duration_seconds <= 60
+     -- 65 = MAX_RECORDING_SECONDS + RECORDING_TOLERANCE_SECONDS in
+     -- lib/domain/trim.ts. Keep the two in step.
+     AND duration_seconds IS NOT NULL AND duration_seconds <= 65
      -- Mirrors validateTrim's "trim end must not run past the end of the
      -- recording". Without this the database is looser than the domain rule.
      AND trim_end <= duration_seconds)

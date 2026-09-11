@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_TRIM_SECONDS, validateTrim } from '../lib/domain/trim'
 import {
-  adjustEnd, adjustStart, initialRange, timeFromPosition, type Range,
+  adjustEnd, adjustStart, initialRange, reclampRange, timeFromPosition, type Range,
 } from '../lib/media/trim-range'
 import { clampPlaybackTime, playStartPosition } from '../lib/media/playback-clamp'
 
@@ -160,10 +160,7 @@ export function Trimmer({
   // the wall-clock estimate cannot end past the end of the recording.
   useEffect(() => {
     if (measured === null) return
-    setRange((current) => ({
-      start: Math.min(current.start, Math.max(measured - 0.1, 0)),
-      end: Math.min(current.end, measured),
-    }))
+    setRange((current) => reclampRange(current, measured))
     onDurationRef.current?.(measured)
   }, [measured])
 

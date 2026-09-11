@@ -202,9 +202,17 @@ describe('validateSubmissionRequest — trim', () => {
     expect(result).toMatchObject({ ok: false, status: 400 })
   })
 
+  // Was duration 61, which now passes on purpose: the recorder auto-stops AT
+  // the cap, so a full-length take measures a shade over it. See
+  // RECORDING_TOLERANCE_SECONDS in lib/domain/trim.ts.
   it('refuses a recording longer than the recording cap', () => {
-    const result = validateSubmissionRequest(week('SUBMITTING'), { ...video, duration: 61 })
+    const result = validateSubmissionRequest(week('SUBMITTING'), { ...video, duration: 120 })
     expect(result).toMatchObject({ ok: false, status: 400 })
+  })
+
+  it('accepts a full-length take whose container overshoots the cap', () => {
+    const result = validateSubmissionRequest(week('SUBMITTING'), { ...video, duration: 60.2 })
+    expect(result).toMatchObject({ ok: true })
   })
 
   it('refuses missing trim values on a video', () => {

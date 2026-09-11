@@ -9,6 +9,21 @@ export const MAX_RECORDING_SECONDS = 60
  *  upload. */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
+/** How far past MAX_RECORDING_SECONDS a source may measure.
+ *
+ *  The recorder auto-stops AT the cap, so a full-length take's container
+ *  reports a fraction over it — and MediaRecorder reports durations that are
+ *  simply wrong on some devices. Validated against an exact 60, a legitimate
+ *  max-length recording was refused.
+ *
+ *  That refusal was uniquely bad because the rule is about the SOURCE: no
+ *  amount of trimming can satisfy it, so the review screen became a dead end
+ *  with Submit disabled and nothing the player could do about it. The real
+ *  guarantees are elsewhere and unaffected — MAX_TRIM_SECONDS caps what
+ *  anyone has to watch, and MAX_UPLOAD_BYTES is checked against the stored
+ *  blob's actual size rather than a client's claim about duration. */
+export const RECORDING_TOLERANCE_SECONDS = 5
+
 /** Trim length drives *viewing* time, which is the real constraint: with 16
  *  entrants, 60s clips would be 16 minutes to review a single objective.
  *  Capping the visible range at 15s keeps a week's voting near 15 minutes. */
@@ -34,7 +49,7 @@ export function validateTrim(
     }
   }
 
-  if (durationSeconds > MAX_RECORDING_SECONDS) {
+  if (durationSeconds > MAX_RECORDING_SECONDS + RECORDING_TOLERANCE_SECONDS) {
     return { ok: false, reason: `Recording must be ${MAX_RECORDING_SECONDS}s or shorter` }
   }
   if (startSeconds < 0) {

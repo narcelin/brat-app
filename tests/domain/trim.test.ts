@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  RECORDING_TOLERANCE_SECONDS,
   validateTrim,
   MAX_RECORDING_SECONDS,
   MAX_TRIM_SECONDS,
@@ -32,8 +33,13 @@ describe('validateTrim', () => {
     if (!result.ok) expect(result.reason).toMatch(/15/)
   })
 
+  // Was MAX_RECORDING_SECONDS + 1, which is now deliberately accepted: the
+  // recorder auto-stops AT the cap, so a full-length take measures a shade
+  // over it and was being refused with no way for the player to comply. The
+  // rule the player is told still reads 60s; the slack absorbs measurement
+  // error, it does not raise the limit.
   it('rejects a recording longer than the 60s cap', () => {
-    const result = validateTrim(0, 10, MAX_RECORDING_SECONDS + 1)
+    const result = validateTrim(0, 10, MAX_RECORDING_SECONDS * 2)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toMatch(/60/)
   })
@@ -59,5 +65,30 @@ describe('validateTrim', () => {
   it('rejects non-finite input rather than trusting the client', () => {
     expect(validateTrim(NaN, 5, 60).ok).toBe(false)
     expect(validateTrim(0, Infinity, 60).ok).toBe(false)
+  })
+})
+
+describe('validateTrim source-length tolerance', () => {
+  // THE BUG. The recorder auto-stops AT the cap, so a full-length recording's
+  // container routinely reports a fraction over 60 — and MediaRecorder is
+  // known to report durations that are simply wrong on some devices. An exact
+  // ceiling therefore refused a legitimate recording, and no amount of
+  // trimming can satisfy a SOURCE-length rule, so the review screen became a
+  // dead end with Submit disabled forever.
+  it('accepts a recording that overshoots the cap by the auto-stop margin', () => {
+    expect(validateTrim(0, 10, MAX_RECORDING_SECONDS + 0.3).ok).toBe(true)
+    expect(validateTrim(0, 10, MAX_RECORDING_SECONDS + RECORDING_TOLERANCE_SECONDS).ok).toBe(true)
+  })
+
+  it('still refuses a source far past the cap', () => {
+    const result = validateTrim(0, 10, MAX_RECORDING_SECONDS + RECORDING_TOLERANCE_SECONDS + 0.1)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('shorter')
+  })
+
+  // The tolerance exists for container overshoot, not to raise the limit. A
+  // clip twice the length must still be refused.
+  it('refuses a clearly over-length recording', () => {
+    expect(validateTrim(0, 10, 120).ok).toBe(false)
   })
 })

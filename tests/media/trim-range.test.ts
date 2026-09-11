@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  MIN_TRIM_SECONDS, adjustEnd, adjustStart, initialRange, timeFromPosition,
+  MIN_TRIM_SECONDS, adjustEnd, adjustStart, initialRange, reclampRange, timeFromPosition,
 } from '../../lib/media/trim-range'
 import { MAX_TRIM_SECONDS, validateTrim } from '../../lib/domain/trim'
 
@@ -91,5 +91,50 @@ describe('timeFromPosition', () => {
 
   it('survives a zero-width track rather than dividing by zero', () => {
     expect(timeFromPosition(10, 0, 60)).toBe(0)
+  })
+})
+
+describe('reclampRange', () => {
+  // THE BUG. The Trimmer built its opening range from the duration reported
+  // at mount, which is 0 before anything has measured the file. The old
+  // re-clamp only ever shrank — Math.min(0, measured) is 0 — so the range
+  // stayed zero-length, validateTrim refused it, and Submit was disabled
+  // with no way back except Retake.
+  it('rebuilds a zero-length range once the real duration is known', () => {
+    expect(reclampRange({ start: 0, end: 0 }, 20)).toEqual({ start: 0, end: 15 })
+    expect(reclampRange({ start: 0, end: 0 }, 3)).toEqual({ start: 0, end: 3 })
+  })
+
+  it('rebuilds an inverted range rather than preserving it', () => {
+    expect(reclampRange({ start: 9, end: 4 }, 20)).toEqual({ start: 0, end: 15 })
+  })
+
+  // The original purpose: a range built against a wall-clock estimate must
+  // not end past the real end of the recording.
+  it('still clamps a range that runs past the end', () => {
+    expect(reclampRange({ start: 0, end: 15 }, 9)).toEqual({ start: 0, end: 9 })
+    expect(reclampRange({ start: 12, end: 27 }, 20)).toEqual({ start: 12, end: 20 })
+  })
+
+  it('leaves a range that already fits alone', () => {
+    expect(reclampRange({ start: 2, end: 10 }, 30)).toEqual({ start: 2, end: 10 })
+  })
+
+  // Clamping the end can drag it past the start. The result must never be a
+  // range the player cannot submit.
+  it('never returns a collapsed range', () => {
+    for (const duration of [0.5, 1, 3, 20, 60]) {
+      for (const current of [{ start: 0, end: 0 }, { start: 30, end: 40 }, { start: 19, end: 19.2 }]) {
+        const out = reclampRange(current, duration)
+        expect(out.end, `${JSON.stringify(current)} @ ${duration}`).toBeGreaterThan(out.start)
+        expect(out.end).toBeLessThanOrEqual(duration)
+        expect(out.start).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('leaves the range alone when the duration is not yet usable', () => {
+    expect(reclampRange({ start: 0, end: 15 }, 0)).toEqual({ start: 0, end: 15 })
+    expect(reclampRange({ start: 0, end: 15 }, NaN)).toEqual({ start: 0, end: 15 })
   })
 })

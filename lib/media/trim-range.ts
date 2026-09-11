@@ -51,3 +51,32 @@ export function timeFromPosition(x: number, trackWidth: number, duration: number
 export function initialRange(duration: number): Range {
   return { start: 0, end: Math.min(MAX_TRIM_SECONDS, duration) }
 }
+
+/** Re-fit a selection once the file's real duration is known.
+ *
+ *  The opening range is built from whatever duration the caller had at mount,
+ *  which is 0 before anything has measured the file. This used to clamp with
+ *  `Math.min` alone, and `Math.min(0, duration)` is 0 — so a range that
+ *  started empty stayed empty however long the recording turned out to be,
+ *  `validateTrim` refused it, and Submit was disabled with no way forward
+ *  except Retake.
+ *
+ *  So a degenerate range is REBUILT rather than clamped. Clamping can only
+ *  ever remove time, and the fault here is that there was none to begin with.
+ */
+export function reclampRange(current: Range, duration: number): Range {
+  // Nothing known yet: leave the caller's range alone rather than rebuilding
+  // it against a duration that is still missing.
+  if (!Number.isFinite(duration) || duration <= 0) return current
+
+  if (current.end <= current.start) return initialRange(duration)
+
+  // `start` is clamped to at most `end - gap`, and `gap` is positive for any
+  // usable duration, so the result cannot collapse. No separate guard for
+  // that: an unreachable branch is one no test can hold to account.
+  const gap = minGap(duration)
+  const end = clamp(current.end, gap, duration)
+  const start = clamp(current.start, 0, end - gap)
+
+  return { start, end }
+}
