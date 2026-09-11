@@ -16,7 +16,16 @@ export const CODE_LENGTH = 10
  *  differences that were never meaningful. */
 export function normalizeCode(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
-  const cleaned = raw.toUpperCase().replace(/[\s-]/g, '')
+  const cleaned = raw
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    // Crockford's canonical input mapping: the letters left out of the
+    // alphabet because they are misreadable are folded onto the digits they
+    // are misread as. Someone handed BRATWINTER on paper types the I they
+    // see, and it resolves to the 1 that was stored. U has no digit it is
+    // confused with and stays rejected.
+    .replace(/[IL]/g, '1')
+    .replace(/O/g, '0')
   if (cleaned.length !== CODE_LENGTH) return null
   for (const character of cleaned) {
     if (!CODE_ALPHABET.includes(character)) return null

@@ -27,11 +27,26 @@ describe('normalizeCode', () => {
     expect(normalizeCode('')).toBeNull()
   })
 
-  // I, L, O and U are excluded so a code cannot be misread or spell a word.
   it('refuses characters outside the alphabet', () => {
-    expect(normalizeCode('ABCDEFGHIJ')).toBeNull()
     expect(normalizeCode('ABCDEFGH!K')).toBeNull()
-    for (const c of 'ILOU') expect(normalizeCode(`ABCDEFGH${c}K`)).toBeNull()
+    expect(normalizeCode('ABCDEFGH K'.replace(' ', '#'))).toBeNull()
+  })
+
+  // Crockford's input mapping. Someone reading a code off a screenshot types
+  // the letter they see; it has to land on the digit that was stored.
+  it('folds the misreadable letters onto their digits', () => {
+    expect(normalizeCode('ABCDEFGHIK')).toBe('ABCDEFGH1K')
+    expect(normalizeCode('ABCDEFGHLK')).toBe('ABCDEFGH1K')
+    expect(normalizeCode('ABCDEFGHOK')).toBe('ABCDEFGH0K')
+    expect(normalizeCode('BRATWINTER')).toBe('BRATW1NTER')
+    // Already-correct input is unchanged by the folding.
+    expect(normalizeCode('BRATW1NTER')).toBe('BRATW1NTER')
+  })
+
+  // U is excluded for a different reason — it is not confused with a digit,
+  // it is left out so codes cannot spell things — so nothing maps to it.
+  it('still refuses U', () => {
+    expect(normalizeCode('ABCDEFGHUK')).toBeNull()
   })
 
   it('refuses a non-string', () => {
