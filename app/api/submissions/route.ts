@@ -1,4 +1,4 @@
-import { del, head } from '@vercel/blob'
+import { head } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import { currentPlayer } from '../../../lib/auth/current-player'
 import { getCurrentWeek } from '../../../lib/db/queries'
@@ -8,16 +8,8 @@ import {
   supersededPathname,
   validateSubmissionRequest,
 } from '../../../lib/domain/submission-request'
+import { discardMedia } from '../../../lib/blob/discard'
 
-/** Best-effort cleanup of a blob we are about to stop referencing. A cleanup
- *  failure must never mask the reason we are cleaning up. */
-async function discard(pathname: string) {
-  try {
-    await del(pathname)
-  } catch {
-    // best-effort only
-  }
-}
 
 /** Records a submission whose media has already been uploaded straight to
  *  Blob by the client (see ./upload/route.ts for why).
@@ -80,7 +72,7 @@ export async function POST(request: Request) {
   if (!check.ok) {
     // The upload is already in the store and will never be referenced, so
     // clean it up rather than leaving an orphan behind.
-    await discard(blob.pathname)
+    await discardMedia(blob.pathname)
     return NextResponse.json({ error: check.error }, { status: check.status })
   }
 
@@ -113,7 +105,7 @@ export async function POST(request: Request) {
       RETURNING id, (SELECT media_pathname FROM previous) AS previous_pathname
     `) as { id: number; previous_pathname: string | null }[]
   } catch (err) {
-    await discard(blob.pathname)
+    await discardMedia(blob.pathname)
     throw err
   }
 
@@ -122,7 +114,7 @@ export async function POST(request: Request) {
   // row still points at. Awaited rather than fired and forgotten: the
   // function may be frozen the moment the response is returned.
   const orphan = supersededPathname(rows[0].previous_pathname, blob.pathname)
-  if (orphan) await discard(orphan)
+  if (orphan) await discardMedia(orphan)
 
   return NextResponse.json({ id: rows[0].id })
 }

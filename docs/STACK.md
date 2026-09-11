@@ -133,10 +133,18 @@ what to delete from the shared blob store?" — and only production may answer
 yes to the second.
 
 **The blob store does not branch.** There is one Vercel Blob store behind
-every database branch. A dev row can therefore reference a production file,
-and any code path that deletes media (`del()` in the admin reset and the
-submission-replace path) reaches production's store no matter which database
-you are pointed at. Treat deletes in dev as real.
+every database branch, so a non-production row can reference a file production
+is still serving, and deleting it reaches the real store.
+
+`lib/blob/discard.ts` is the single place the app deletes media, and it
+**declines outside production** (`VERCEL_ENV !== 'production'`). Both callers —
+the admin reset and the submission-replace path — go through it; `del` is not
+imported anywhere else in `app/`.
+
+It fails toward leaving an orphan, deliberately. An orphan is reclaimable and
+`scripts/sweep-orphan-blobs.mjs` reclaims it, computing the orphan set from
+production so files a dev or preview deployment abandons get swept in the
+ordinary course. A wrongly deleted recording is simply gone.
 
 ## Environment variables
 
@@ -294,14 +302,31 @@ choices that have not been made yet.
 
 1. **Preview deployments still use the production database.** Local dev no
    longer does (the `dev` branch, 2026-09-11), but Vercel's `DATABASE_URL` is
-   scoped to Production, Preview and Development alike, so any branch pushed
-   to GitHub gets a preview URL wired to live data. Fixing it means either
-   scoping a Preview-targeted override in Vercel or turning on Neon's
-   per-preview branching — both of which have to work around the fact that the
-   integration manages that variable.
-2. **The blob store is shared by every branch**, so deletes in dev are real.
-   See [Branches](#branches). Neon's own object storage branches with the
-   database; Vercel Blob does not.
+   scoped to Production, Preview and Development alike, so a branch pushed to
+   GitHub gets a preview URL wired to live data — where it can create, edit and
+   delete real rows.
+
+   A plain env-var override cannot fix this: the Neon integration owns
+   `DATABASE_URL` across all three targets, and Vercel will not accept a second
+   variable of the same name overlapping them. The supported fix is Neon's
+   **automated preview branching**, which injects per-deployment credentials by
+   webhook at build time instead of storing an env var at all.
+
+   It is a **dashboard toggle** with no CLI or API equivalent: Vercel →
+   Storage → the Neon store → Connect Project → Advanced Options → Deployments
+   Configuration → enable **Preview**, plus *Resource must be active before
+   deployment*.
+
+   Two things to know before turning it on. Preview branches are copy-on-write
+   clones of **production data**, so each one holds real submissions — the
+   `lib/blob/discard.ts` guard exists because of that. And cleanup follows
+   Vercel's deployment retention policy, six months by default, so branches
+   outlive the pull requests that made them.
+
+2. **The blob store is shared by every branch.** Neon's own object storage
+   branches with the database; Vercel Blob does not. Guarded in code as of
+   2026-09-11 — see [Branches](#branches) — but the guard covers the app, not
+   a script or a console someone points at the wrong place.
 3. **Vercel project preset is "Other".** `vercel.json` declares `nextjs` and
    wins, so builds are correct — but the dashboard reads as misconfigured, and
    anything that consults the preset rather than the file will be wrong.

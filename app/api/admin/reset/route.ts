@@ -1,9 +1,9 @@
-import { del } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import { currentPlayer } from '../../../../lib/auth/current-player'
 import { isAdmin } from '../../../../lib/auth/is-admin'
 import { sql } from '../../../../lib/db/client'
 import { isResetConfirmed } from '../../../../lib/domain/reset'
+import { discardMedia } from '../../../../lib/blob/discard'
 
 /** Wipes the active season back to the start of week 1.
  *
@@ -91,14 +91,15 @@ export async function POST(request: Request) {
   // After the commit, and best-effort: the database is already consistent, so
   // a storage failure must not report a reset that did happen as failed. Any
   // blob missed here is reclaimable with scripts/sweep-orphan-blobs.mjs.
+  //
+  // discardMedia also declines outright outside production, because the blob
+  // store is shared by every database branch: a reset run against a preview
+  // branch — whose rows are a copy-on-write clone of production's — would
+  // otherwise delete the real season's proof. mediaDeleted reports what was
+  // actually removed, so a preview reset answers 0 rather than lying.
   let mediaDeleted = 0
   for (const row of media) {
-    try {
-      await del(row.media_pathname)
-      mediaDeleted += 1
-    } catch {
-      // best-effort only
-    }
+    if (await discardMedia(row.media_pathname)) mediaDeleted += 1
   }
 
   return NextResponse.json({
