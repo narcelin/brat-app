@@ -1,7 +1,7 @@
 # Stack and deployment
 
 What this app is built on, who owns which piece, and how it gets to
-https://brats.anico.dev. Current as of 2026-09-10.
+https://brats.anico.dev. Current as of 2026-09-11.
 
 Companion docs: [RULES.md](RULES.md) (game rules), [ROADMAP.md](ROADMAP.md)
 (what is built and what is next), [TESTING.md](TESTING.md) (the two test
@@ -97,8 +97,10 @@ no migration framework.
 
 - `db/schema.sql` is the current shape and is written to be re-runnable.
 - `db/migrations/NNN-*.sql` are the historical steps, kept for the record.
-- `node db/apply.mjs <files…>` applies them; `npm run db:apply` is the
-  development wrapper.
+- `node db/apply.mjs <files…>` applies them. `npm run db:apply` is the **dev
+  branch** wrapper — schema, seed, and the dev marker, against
+  `.env.development.local`. There is deliberately no production wrapper; see
+  [Applying schema to production](#applying-schema-to-production).
 - Several rules are enforced *by the database*, not by application code — one
   active season, no overlapping weeks (`weeks_no_overlap`, DEFERRABLE),
   ordered week timestamps. That is intentional: a bad seed cannot create an
@@ -106,17 +108,35 @@ no migration framework.
 
 ### Branches
 
-| Branch | Used by | Connection string lives in |
+| Branch | Used by | Contents | Connection string lives in |
+|---|---|---|---|
+| production (default) | The live site, and **preview deployments** | Real players, real submissions | Vercel env `DATABASE_URL`, pulled to `.env.local` |
+| `dev` | `npm run dev`, `npm run db:apply` | Seeded season, no real data | `.env.development.local`, by hand |
+| `test` | `npm run test:integration` only | Whatever the suite creates and tears down | `.env.test.local`, by hand |
+
+`dev` and `test` are **schema-only** branches — Neon copies the schema without
+the rows, so neither holds a copy of anyone's real submissions. `dev` is then
+seeded by `npm run db:apply`, which gives it the full 8-week placeholder season
+with nobody signed up.
+
+Both disposable branches carry a marker table that the database itself can be
+asked about, rather than trusting an env file's name or a hostname pattern:
+
+| Marker | Created by | Enforced by |
 |---|---|---|
-| production | The live site **and local `npm run dev`** | Vercel env `DATABASE_URL`, pulled to `.env.local` / `.env.development.local` |
-| `test` | `npm run test:integration` only | `.env.test.local`, set by hand |
+| `test_branch_marker` | `db/test-branch.sql` | `tests/integration/guard.ts` — the suite **refuses to run without it**, so a stray env file cannot write to production |
+| `dev_branch_marker` | `db/dev-branch.sql` | `scripts/sweep-orphan-blobs.mjs` — the sweep **refuses to run with it**, so it cannot compute "orphan" from a database that never referenced production's media |
 
-The test branch carries a `test_branch_marker` row, and
-`tests/integration/guard.ts` aborts unless it finds one — so a wrong env file
-fails closed instead of writing to live data.
+The two guards point in opposite directions on purpose. The test guard asks
+"am I allowed to write here?"; the sweep guard asks "am I allowed to decide
+what to delete from the shared blob store?" — and only production may answer
+yes to the second.
 
-**Local development shares the production branch.** See [Known
-gaps](#known-infrastructure-gaps).
+**The blob store does not branch.** There is one Vercel Blob store behind
+every database branch. A dev row can therefore reference a production file,
+and any code path that deletes media (`del()` in the admin reset and the
+submission-replace path) reaches production's store no matter which database
+you are pointed at. Treat deletes in dev as real.
 
 ## Environment variables
 
@@ -151,41 +171,57 @@ what this section is for.
 ### Getting them locally
 
 ```bash
-vercel env pull .env.development.local
+vercel env pull .env.local
 ```
 
-`.env.local` holds the same values (Next reads both; `.env.local` is what
-`next dev` uses, `.env.development.local` is what the `db:apply` scripts read
-via `--env-file`). `.env.test.local` is maintained by hand and holds only the
-test-branch `DATABASE_URL`. All are gitignored.
+**Pull into `.env.local`, and nothing else.** The three local env files are a
+deliberate stack, in Next's own precedence order:
+
+| File | Written by | Holds |
+|---|---|---|
+| `.env.development.local` | Hand | `DATABASE_URL` → the `dev` branch. Nothing else |
+| `.env.local` | `vercel env pull` | Everything, with the **production** `DATABASE_URL` |
+| `.env.test.local` | Hand | `DATABASE_URL` → the `test` branch. Read only via `--env-file` |
+
+Next loads `.env.development.local` ahead of `.env.local`, so the one-line file
+wins for the database while Clerk and Blob still come from the pull. That is
+what makes the arrangement survive: `vercel env pull` overwrites its target
+file wholesale, so the override has to live somewhere the pull never touches.
+
+Pulling into `.env.development.local` would silently point local development
+back at production — which is exactly the bug this layering exists to prevent.
+All three files are gitignored.
 
 ## Deployment
 
 | | |
 |---|---|
 | Vercel project | `brat-app`, team `narcelins-projects` |
+| Repository | https://github.com/narcelin/brat-app (public) |
 | Production URL | https://brats.anico.dev (also `brat-app.vercel.app`) |
 | Region | `iad1` |
 | Node | 24.x |
 | Framework | Declared in `vercel.json` as `nextjs` |
 | Build | `next build` |
 
-### How a deploy happens today
+### How a deploy happens
 
-By hand, from the laptop:
+Through Git, since 2026-09-11:
 
-```bash
-vercel --prod
-```
+| Push to | Result |
+|---|---|
+| `main` | Production deploy, live on brats.anico.dev |
+| Any other branch | Preview deploy at its own URL — **wired to the production database**, see [Known gaps](#known-infrastructure-gaps) |
 
-There is **no Git integration and no git remote**. The repo is local-only, and
-every production deploy so far has been a direct CLI push. Consequences worth
-being explicit about:
+`vercel --prod` from the laptop still works and still deploys production. It is
+now the fallback, not the routine — using both just deploys twice.
 
-- No preview deployments, so nothing is exercised on real infrastructure
-  before it is live.
-- No CI — `npm test` runs only when someone remembers.
-- No off-machine copy of the repo. 119 commits of history exist on one disk.
+Before the GitHub connection every deploy was a manual CLI push from one
+machine, with no preview environments, no CI and no off-machine copy of the
+history. Two of those three are now fixed; **there is still no CI**, so
+`npm test` runs only when someone remembers. A GitHub Action running the unit
+suite on push is the obvious next step — it needs no secrets, because the unit
+suite is designed to pass with no env files at all.
 
 `ServiceWorker.tsx` plus the `brat-vNN` cache name in `public/sw.js` mean a
 new deploy is picked up without anyone force-refreshing — **bump that cache
@@ -195,10 +231,40 @@ version whenever `sw.js` changes**, or installed clients keep the old worker.
 
 ```bash
 npm install
-vercel env pull .env.development.local   # and .env.local
-npm run dev                              # http://localhost:3000
-npm test                                 # unit suite, no env files needed
-npm run test:integration                 # requires .env.test.local
+vercel env pull .env.local   # production values for Clerk and Blob
+npm run dev                  # http://localhost:3000, against the dev branch
+npm test                     # unit suite, no env files needed
+npm run test:integration     # requires .env.test.local
+```
+
+`npm run dev` talks to the `dev` branch, so you can sign up, submit and vote
+without touching a real week. Sign-in still goes through the **production**
+Clerk instance — Clerk is not branched — so your local account is a real
+account, and it will have no `users` row on the dev branch until you redeem an
+invite there. Generate one from `/admin` against dev.
+
+### Applying schema to production
+
+There is no npm script for this, on purpose — the shortest path to production
+should not be one word:
+
+```bash
+vercel env pull .env.production.local --environment=production
+node --env-file=.env.production.local db/apply.mjs db/schema.sql db/seed.sql
+```
+
+Note the absence of `db/dev-branch.sql`. Applying it to production would mark
+production disposable and disable the blob sweep.
+
+### Re-provisioning the dev branch
+
+If it drifts or you want it back to a clean season:
+
+```bash
+neon branches delete dev --project-id <project>
+neon branches create --name dev --schema-only --project-id <project>
+neon connection-string dev --project-id <project> --pooled   # into .env.development.local
+npm run db:apply
 ```
 
 `npm test` must pass on a fresh clone with no env files at all — that is why
@@ -210,15 +276,20 @@ at import time.
 Ordered by what will hurt first. None of these are code defects; they are
 choices that have not been made yet.
 
-1. **Local dev writes to the production database.** `.env.local` and the live
-   site point at the same Neon endpoint. A Neon dev branch and a
-   Development-scoped `DATABASE_URL` would fix it; the test branch already
-   proves the pattern.
-2. **No git remote.** No backup, no previews, no CI.
+1. **Preview deployments still use the production database.** Local dev no
+   longer does (the `dev` branch, 2026-09-11), but Vercel's `DATABASE_URL` is
+   scoped to Production, Preview and Development alike, so any branch pushed
+   to GitHub gets a preview URL wired to live data. Fixing it means either
+   scoping a Preview-targeted override in Vercel or turning on Neon's
+   per-preview branching — both of which have to work around the fact that the
+   integration manages that variable.
+2. **The blob store is shared by every branch**, so deletes in dev are real.
+   See [Branches](#branches). Neon's own object storage branches with the
+   database; Vercel Blob does not.
 3. **Vercel project preset is "Other".** `vercel.json` declares `nextjs` and
    wins, so builds are correct — but the dashboard reads as misconfigured, and
    anything that consults the preset rather than the file will be wrong.
 4. **Neon Auth env vars are provisioned but unused.** Documented above so the
    next person doesn't go looking for a second auth system.
 5. **Blob orphans.** `scripts/sweep-orphan-blobs.mjs` exists and is run by
-   hand. See [ISSUES.md](ISSUES.md).
+   hand, against production only. See [ISSUES.md](ISSUES.md).

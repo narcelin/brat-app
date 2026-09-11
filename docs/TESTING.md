@@ -48,6 +48,20 @@ an env file's name or a hostname pattern. A wrong `--env-file`, a stale `.env`,
 or a command copied from the wrong place all fail closed, because only
 `db/test-branch.sql` creates that table and it is never applied to production.
 
+### The dev branch uses the same trick, backwards
+
+Since 2026-09-11 there is also a `dev` branch, which `npm run dev` uses, marked
+by `dev_branch_marker` from `db/dev-branch.sql`. The marker exists for a
+different consumer and points the opposite way:
+
+- This suite **refuses to run without** `test_branch_marker` — a guard against
+  writing to production.
+- `scripts/sweep-orphan-blobs.mjs` **refuses to run with** either marker — a
+  guard against deleting from production's blob store, which every branch
+  shares and which nothing branches alongside the database.
+
+Full arrangement in [STACK.md](STACK.md#branches).
+
 Verified by pointing the suite at production: it refuses and runs nothing.
 
 ### The blob store is NOT branched

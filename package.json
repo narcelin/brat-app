@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "node --env-file=.env.test.local ./node_modules/.bin/vitest run --config vitest.integration.config.ts",
-    "db:apply": "node --env-file=.env.development.local db/apply.mjs db/schema.sql db/seed.sql",
+    "db:apply": "node --env-file=.env.development.local db/apply.mjs db/schema.sql db/seed.sql db/dev-branch.sql",
     "db:apply:test": "node --env-file=.env.test.local db/apply.mjs db/schema.sql db/test-branch.sql"
   },
   "dependencies": {

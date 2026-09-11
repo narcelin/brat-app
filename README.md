@@ -7,9 +7,13 @@ Live at https://brats.anico.dev — invite-only.
 
 ```bash
 npm install
-vercel env pull .env.development.local
+vercel env pull .env.local
 npm run dev
 ```
+
+Local development runs against a seeded Neon `dev` branch, not production —
+`.env.development.local` holds that override and must not be overwritten by
+`vercel env pull`. See [docs/STACK.md](docs/STACK.md#getting-them-locally).
 
 ## Docs
 
@@ -28,5 +32,5 @@ npm run dev
 | `npm run dev` | Local dev server |
 | `npm test` | Unit suite — pure functions and route handlers, no database |
 | `npm run test:integration` | Integration suite — requires a disposable Neon branch |
-| `npm run db:apply` | Apply `db/schema.sql` + `db/seed.sql` to the dev database |
-| `vercel --prod` | Deploy to production |
+| `npm run db:apply` | Apply schema, seed and the dev marker to the `dev` branch |
+| `git push` | Deploy — `main` goes to production, any other branch gets a preview |
