@@ -45,3 +45,6 @@ skills-lock.json
 
 # Agent scratch: plans, reports, review packages
 .superpowers/
+
+# /brag launch-video output (rendered video + Hyperframes project)
+/brag-output/
