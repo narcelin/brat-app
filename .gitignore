@@ -48,3 +48,6 @@ skills-lock.json
 
 # /brag launch-video output (rendered video + Hyperframes project)
 /brag-output/
+
+# /founder skill output (pricing notes, facts)
+/founder/
