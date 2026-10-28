@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 /** A fullscreen camera surface rather than a video embedded in a scrolling
  *  page. Capture is a mode, not a section: the page behind must not scroll
@@ -39,9 +40,14 @@ export function CaptureSheet({
     }
   }, [])
 
-  return (
+  // Portalled to <body>: the record button now lives in the sticky .dock on
+  // the objective page, and a sticky box is its own stacking context — mounted
+  // inside it, even z-index 100 could not lift the sheet over the fixed tab
+  // bar. The sheet only ever mounts after a tap, so document always exists.
+  return createPortal(
     <div className="sheet" role="dialog" aria-modal="true" aria-label="Capture proof">
       {children}
-    </div>
+    </div>,
+    document.body,
   )
 }

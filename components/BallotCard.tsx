@@ -93,9 +93,9 @@ export function BallotCard({
   const lone = objective.entrants[0]
 
   return (
-    <section className="ballot">
+    <section className="ballot" id={`objective-${objective.objectiveId}`}>
       <header>
-        <span className={`tier tier-${objective.tier}`}>{objective.tier}</span>
+        <span className={`tier-badge tier-${objective.tier}`}>{objective.tier}</span>
         <h2>{objective.title}</h2>
       </header>
 
@@ -157,68 +157,83 @@ export function BallotCard({
             {readOnly
               ? 'This week is settled — voting is over.'
               : `Tap in order — best first. ${check.ok ? 'Ready to save.' : check.reason}`}
+            {!revealNames && ' Names stay hidden until voting closes.'}
           </p>
-          {!revealNames && (
-            <p className="status">Names are hidden until voting closes.</p>
-          )}
 
-          {objective.entrants.map((entrant) => {
-            const position = ranking.indexOf(entrant.userId)
-            const isSelf = entrant.userId === viewerId
-            return (
-              <div key={entrant.userId} className="ballot-entry">
-                {/* Your own entry stays marked even while names are hidden:
-                    it cannot be ranked, and an unrankable card with no
-                    explanation just looks broken. */}
-                {(revealNames || isSelf) && (
-                  <div className="ballot-who">
-                    {revealNames && (
-                      <>
-                        <Avatar seed={entrant.avatarSeed} className="roster-face" />
-                        <b>{entrant.displayName}</b>
-                      </>
+          {/* A grid so every attempt is on screen together: ranking is a
+              comparison, and scrolling one full-width proof at a time meant
+              judging each against a memory of the last. */}
+          <div className="ballot-grid">
+            {objective.entrants.map((entrant) => {
+              const position = ranking.indexOf(entrant.userId)
+              const isSelf = entrant.userId === viewerId
+              return (
+                <div
+                  key={entrant.userId}
+                  className={`ballot-entry${position !== -1 ? ' is-ranked' : ''}`}
+                >
+                  <div className="ballot-media">
+                    <ProofPlayer
+                      pathname={entrant.mediaPathname}
+                      mediaType={entrant.mediaType}
+                      trimStart={entrant.trimStart}
+                      trimEnd={entrant.trimEnd}
+                    />
+                    {/* The rank sits on the proof itself, so the order reads
+                        off the grid without reading any button text. */}
+                    {position !== -1 && (
+                      <span className="rank-badge" aria-hidden="true">{position + 1}</span>
                     )}
-                    {isSelf && (
-                      <span className="roster-you">{revealNames ? ' you' : 'your proof'}</span>
-                    )}
+                    {/* Your own entry stays marked even while names are hidden:
+                        it cannot be ranked, and an unrankable card with no
+                        explanation just looks broken. */}
+                    {isSelf && <span className="self-badge">yours</span>}
                   </div>
-                )}
-                <ProofPlayer
-                  pathname={entrant.mediaPathname}
-                  mediaType={entrant.mediaType}
-                  trimStart={entrant.trimStart}
-                  trimEnd={entrant.trimEnd}
-                />
-                {readOnly ? (
-                  <p className="status">
-                    {isSelf
-                      ? 'Your entry.'
-                      : position === -1
-                        ? 'You did not rank this one.'
-                        : `You ranked this #${position + 1}.`}
-                  </p>
-                ) : (
-                  <button
-                    className={`btn${position === -1 ? ' ghost' : ''}`}
-                    disabled={busy || isSelf}
-                    onClick={() => toggle(entrant.userId)}
-                  >
-                    {isSelf
-                      ? 'You cannot rank yourself'
-                      : position === -1
-                        ? 'Rank this one'
-                        : `Ranked #${position + 1} — tap to remove`}
-                  </button>
-                )}
-              </div>
-            )
-          })}
+                  {revealNames && (
+                    <div className="ballot-who">
+                      <Avatar seed={entrant.avatarSeed} className="roster-face" />
+                      <b>{entrant.displayName}</b>
+                    </div>
+                  )}
+                  {readOnly ? (
+                    <p className="status">
+                      {isSelf
+                        ? 'Your entry.'
+                        : position === -1
+                          ? 'You did not rank this one.'
+                          : `You ranked this #${position + 1}.`}
+                    </p>
+                  ) : (
+                    <button
+                      className={`btn btn-small${position === -1 ? ' ghost' : ''}`}
+                      disabled={busy || isSelf}
+                      onClick={() => toggle(entrant.userId)}
+                      aria-label={
+                        isSelf
+                          ? 'You cannot rank yourself'
+                          : position === -1
+                            ? 'Rank this one'
+                            : `Ranked #${position + 1} — tap to remove`
+                      }
+                    >
+                      {isSelf ? 'yours' : position === -1 ? 'rank' : `#${position + 1} · undo`}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
           {error && <p className="status admin-error">{error}</p>}
           {!readOnly && (
-            <button className="btn" disabled={busy || !check.ok} onClick={save}>
-              {busy ? 'Saving…' : saved ? 'Saved — change it?' : 'Save this vote'}
-            </button>
+            <div className="ballot-foot">
+              <span className="ballot-count">
+                ranked {ranking.length} of {entrantIds.filter((id) => id !== viewerId).length}
+              </span>
+              <button className="btn" disabled={busy || !check.ok} onClick={save}>
+                {busy ? 'Saving…' : saved ? 'Saved — change it?' : 'Save this vote'}
+              </button>
+            </div>
           )}
         </div>
       )}

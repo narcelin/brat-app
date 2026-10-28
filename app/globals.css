@@ -10,6 +10,13 @@
   --ink: #0b0b0b;
   --btn: #0b0b0b;
   --btn-ink: #8ACE00;
+  /* Secondary text on the green. Dimming --ink with opacity (the old .55-.6)
+     lands near 3.9:1 against #8ACE00 and fails WCAG AA; this solid dark green
+     is ~5.7:1 and reads as the same "quieter" voice. */
+  --ink-soft: #2E4400;
+  --unhinged: #ff5c5c;
+  /* Height of the bottom tab bar, excluding the home-indicator inset. */
+  --tabbar-h: 62px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
@@ -30,8 +37,8 @@ body {
   gap: 28px;
   padding: 20px 20px calc(env(safe-area-inset-bottom) + 24px);
 }
-h1 { margin: 0; font-size: 56px; letter-spacing: -.04em; font-weight: 800; }
-.sub { margin: 4px 0 0; opacity: .6; }
+h1 { margin: 0; font-size: 56px; line-height: .95; letter-spacing: -.05em; font-weight: 800; }
+.sub { margin: 6px 0 0; color: var(--ink-soft); }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .btn {
   display: block; width: 100%;
@@ -51,23 +58,130 @@ h1 { margin: 0; font-size: 56px; letter-spacing: -.04em; font-weight: 800; }
 code { background: rgba(0,0,0,.12); padding: 1px 5px; border-radius: 5px; }
 .counter { font-size: 92px; font-weight: 800; text-align: center; letter-spacing: -.05em; }
 footer { margin-top: auto; }
-.status { margin: 0; font-size: 13px; opacity: .55; }
+.status { margin: 0; font-size: 13px; color: var(--ink-soft); }
 
+/* Objective cards. The tier sets the look so the three read as three
+   different stakes: easy is an outline on the green, hard is solid ink,
+   unhinged is ink with a red edge. */
 .card {
-  display: block;
-  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
   border: 2px solid var(--ink);
   border-radius: 14px;
   background: var(--ink);
   color: var(--btn-ink);
   text-decoration: none;
+  transition: transform .08s ease;
 }
-.card h2 { margin: 8px 0 0; font-size: 24px; letter-spacing: -.02em; }
-.tier { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; opacity: .75; }
-.tier-unhinged { color: #ff5c5c; opacity: 1; }
-.desc { margin: 6px 0 0; opacity: .7; font-size: 14px; }
-.medals { margin: 10px 0 0; font-size: 13px; opacity: .8; }
-.state { margin: 6px 0 0; font-size: 13px; font-weight: 600; }
+.card:active { transform: scale(.98); }
+.card-easy { background: transparent; color: var(--ink); }
+.card-unhinged { border-color: var(--unhinged); }
+.card-unhinged .tier, .card-unhinged .card-prize { color: var(--unhinged); }
+.card h2 { margin: 0; font-size: 23px; line-height: 1.1; letter-spacing: -.02em; }
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.card-prize { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.card-prize b { font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
+.card-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.card-turnout { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.tier { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.tier-unhinged { color: var(--unhinged); }
+.desc { margin: 0; opacity: .8; font-size: 14px; }
+
+/* Overlapping faces: who is in, at a glance. The ring matches the card text
+   so the stack reads on both the outline and the solid card. */
+.faces { display: flex; }
+.faces svg {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  flex: none;
+}
+.faces svg + svg { margin-left: -9px; }
+
+/* Status pills. Outline by default, solid for a done or headline state. The
+   solid one inverts whatever it sits on, so it works on green and on ink. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pill.is-solid { background: var(--ink); border-color: var(--ink); color: var(--btn-ink); }
+.card:not(.card-easy) .pill.is-solid { background: var(--btn-ink); border-color: var(--btn-ink); color: var(--ink); }
+
+/* Tier as a pill, for page headers where it labels the whole screen. */
+.tier-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--btn-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.tier-badge.tier-unhinged { color: var(--unhinged); }
+
+/* --- Home ------------------------------------------------------------------ */
+
+.week-head { display: flex; flex-direction: column; gap: 14px; }
+.week-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.week-title h1 { font-size: 60px; line-height: .9; }
+.week-title .pill { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.week-head .sub { margin: 0; }
+
+.progress { display: flex; flex-direction: column; gap: 8px; }
+.progress-label {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.progress-note { color: var(--ink-soft); }
+.progress-track { display: flex; gap: 6px; }
+.progress-track span {
+  flex: 1;
+  height: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+}
+.progress-track span.is-done { background: var(--ink); }
+
+/* The voting call to action: a card you can't miss rather than another
+   full-width button that looks like every other one. */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--btn-ink);
+  text-decoration: none;
+}
+.banner-text { display: flex; flex-direction: column; gap: 2px; }
+.banner-text b { font-size: 17px; }
+.banner-text span { font-size: 13px; opacity: .85; }
+.banner-cta {
+  flex: none;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--btn-ink);
+  color: var(--ink);
+  font-weight: 800;
+}
 
 .preview { width: 100%; border-radius: 14px; border: 2px solid var(--ink); background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
 .capture { display: flex; flex-direction: column; gap: 12px; }
@@ -109,36 +223,47 @@ footer { margin-top: auto; }
   margin: 6px 0 0;
 }
 
-/* Medal values as a row of figures rather than a run-on line of emoji — the
-   numbers are what a player is actually weighing up. */
-.medal-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.medal-row li {
-  padding: 6px 10px;
+/* The four payouts as one ruled strip of figures, first place filled. */
+.points-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
   border: 2px solid var(--ink);
-  border-radius: 999px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  border-radius: 14px;
+  overflow: hidden;
 }
-.medal-row b { font-size: 15px; letter-spacing: 0; }
+.points-grid > div {
+  display: flex;
+  flex-direction: column-reverse; /* figure above label; dt stays first in the DOM */
+  align-items: center;
+  padding: 12px 0;
+}
+.points-grid > div + div { border-left: 2px solid var(--ink); }
+.points-grid > div.is-top { background: var(--ink); color: var(--btn-ink); }
+.points-grid dd { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+.points-grid dt { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+
+/* The record button, pinned in thumb reach above the tab bar. Last in the
+   page flow so it only sticks while there is content below the fold. */
+.dock {
+  position: sticky;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  margin: auto -20px 0;
+  padding: 12px 20px;
+  border-top: 2px solid var(--ink);
+  background: var(--bg);
+}
+.dock .btn { text-align: center; font-size: 18px; font-weight: 800; }
 
 /* --- Roster -------------------------------------------------------------- */
 
 .roster { display: flex; flex-direction: column; gap: 10px; }
 .roster-head {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: .08em;
-  opacity: .65;
-  font-weight: 700;
+  font-weight: 800;
 }
 .roster-list { margin: 0; padding: 0; list-style: none; }
 .roster-list li {
@@ -147,23 +272,33 @@ footer { margin-top: auto; }
   gap: 10px;
   padding: 11px 4px;
   border-bottom: 1px solid rgba(0, 0, 0, .18);
-  opacity: .5;
+  /* Not posted yet. A colour, not opacity: half-faded ink on the green
+     fails contrast. */
+  color: var(--ink-soft);
 }
-.roster-list li.is-done { opacity: 1; }
+.roster-list li.is-done { color: var(--ink); }
 .roster-mark { width: 16px; font-weight: 800; }
 .roster-name { flex: 1; font-weight: 600; }
 .roster-you {
-  font-weight: 400;
-  opacity: .55;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: .08em;
 }
 .roster-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
-  opacity: .7;
+}
+.roster-list li.is-done .roster-state {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--btn-ink);
 }
 
 /* --- Avatars ------------------------------------------------------------- */
@@ -671,16 +806,78 @@ footer { margin-top: auto; }
 .ballot h2 { margin: 6px 0 0; font-size: 26px; letter-spacing: -.02em; }
 .ballot-entry { display: flex; flex-direction: column; gap: 10px; }
 .ballot-who { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+
+/* Every attempt side by side, ranked by tapping in order. */
+.ballot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ballot-grid .ballot-entry { gap: 8px; min-width: 0; }
+.ballot-grid .ballot-who { font-size: 13px; }
+.ballot-grid .ballot-who .roster-face { width: 28px; height: 28px; }
+.ballot-media { position: relative; }
+.ballot-grid .proof { aspect-ratio: 3 / 4; object-fit: cover; }
+.ballot-entry.is-ranked .proof { outline: 3px solid var(--ink); outline-offset: 1px; }
+/* Over the proof, so pointer events go through to the video controls. */
+.rank-badge, .self-badge { position: absolute; top: 8px; left: 8px; pointer-events: none; }
+.rank-badge {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 20px;
+  font-weight: 800;
+}
+.self-badge {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.btn.btn-small { padding: 11px 12px; text-align: center; font-size: 15px; }
+.ballot-foot { display: flex; align-items: center; gap: 12px; }
+.ballot-count { flex: 1; font-weight: 700; }
+.ballot-foot .btn { width: auto; text-align: center; }
+
+/* Jump between ballots. Sticky under the app bar so it is there mid-scroll. */
+.jump {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 58px);
+  z-index: 5;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg);
+}
+.jump a {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.jump a:active { background: var(--ink); color: var(--btn-ink); }
 /* Your own proof, shown back to you before the reveal. Deliberately quieter
    than the submit button: it is a reference, not the action on the page. */
 .mine { margin: 20px 0; }
 .mine-head {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: .08em;
-  opacity: .65;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .proof {
@@ -694,26 +891,84 @@ footer { margin-top: auto; }
 /* Participation count. Dimmer and smaller than the medal row on purpose: it
    counts turning up, not placing, and must not read as a fourth medal. */
 .standings-entries {
-  font-size: 13px;
-  opacity: .6;
+  opacity: .8;
   white-space: nowrap;
 }
 
 /* --- Standings ----------------------------------------------------------- */
 
-.standings { margin: 0; padding: 0; list-style: none; }
+/* Top three on steps of different heights, first in the middle. */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.podium li { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.podium-1 { order: 2; }
+.podium-2 { order: 1; }
+.podium-3 { order: 3; }
+.podium-face { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--ink); }
+.podium-1 .podium-face { width: 58px; height: 58px; border-width: 3px; }
+.podium-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+.podium li.is-you .podium-name { text-decoration: underline; text-underline-offset: 3px; }
+.podium-step {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px 14px 0 0;
+  background: var(--ink);
+  color: var(--btn-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.podium-step b { font-size: 28px; font-weight: 800; letter-spacing: -.04em; }
+.podium-1 .podium-step { height: 124px; color: #FFD200; }
+.podium-1 .podium-step b { font-size: 40px; }
+.podium-2 .podium-step { height: 92px; }
+.podium-3 .podium-step { height: 72px; }
+
+.standings { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .standings li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, .18);
+  gap: 12px;
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
 }
-.standings li.is-you { font-weight: 700; }
-.standings-rank { width: 22px; font-weight: 800; opacity: .55; }
-.standings-name { flex: 1; font-weight: 600; }
-.standings-medals { font-size: 13px; opacity: .75; white-space: nowrap; }
-.standings-points { font-size: 18px; min-width: 44px; text-align: right; }
+/* Your row is the one you are looking for, so it is the solid one. */
+.standings li.is-you { background: var(--ink); color: var(--btn-ink); }
+.standings li.is-you .roster-face { border-color: var(--btn-ink); }
+.standings-rank { width: 20px; font-weight: 800; }
+.standings-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.standings-name { font-weight: 700; }
+.standings-medals { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.medal { display: inline-flex; align-items: center; gap: 3px; }
+.medal::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--ink);
+}
+.medal.is-gold::before { background: #FFD200; }
+.medal.is-silver::before { background: #d4d4d4; }
+.medal.is-bronze::before { background: #D08A4C; }
+.standings li.is-you .medal::before { border-color: transparent; }
+.standings-points { font-size: 22px; font-weight: 800; letter-spacing: -.03em; min-width: 40px; text-align: right; }
 
 /* The reset block. Visually separated from the week controls so it never
    reads as just another admin action. */
@@ -760,4 +1015,46 @@ footer { margin-top: auto; }
   align-self: center;
   padding: 10px 22px;
   text-align: center;
+}
+
+/* --- Tab bar --------------------------------------------------------------- */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 6px 12px env(safe-area-inset-bottom);
+  border-top: 2px solid var(--ink);
+  background: var(--bg);
+}
+.tabbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.tabbar a.is-active { background: var(--ink); color: var(--btn-ink); }
+.tabbar a:active { opacity: .7; }
+.tabbar svg { width: 22px; height: 22px; }
+.tabbar-spacer { height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); flex: none; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

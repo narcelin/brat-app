@@ -1,4 +1,5 @@
 import { Avatar } from './Avatar'
+import { Check } from './Check'
 import type { RosterEntry } from '../lib/db/queries'
 
 /** Who has posted — never what. Names cannot be copied or one-upped, so this
@@ -29,7 +30,7 @@ export function ObjectiveRoster({
               {r.userId === viewerId && <span className="roster-you"> you</span>}
             </span>
             <span className="roster-state" aria-label={r.hasSubmitted ? 'posted' : 'nothing yet'}>
-              {r.hasSubmitted ? '✓ posted' : 'nothing yet'}
+              {r.hasSubmitted ? <><Check size={12} /> posted</> : 'nothing yet'}
             </span>
           </li>
         ))}
