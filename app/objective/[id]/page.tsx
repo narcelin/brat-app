@@ -32,16 +32,19 @@ export default async function ObjectivePage({
   return (
     <main className="screen">
       <header>
-        <span className={`tier tier-${objective.tier}`}>{TIER_LABEL[objective.tier]}</span>
+        <span className={`tier-badge tier-${objective.tier}`}>{TIER_LABEL[objective.tier]}</span>
         <h1 className="objective-title">{objective.title}</h1>
         {objective.description && <p className="sub">{objective.description}</p>}
-        <ul className="medal-row">
-          <li><b>{medals.first}</b> 1st</li>
-          <li><b>{medals.second}</b> 2nd</li>
-          <li><b>{medals.third}</b> 3rd</li>
-          <li><b>{medals.effort}</b> effort</li>
-        </ul>
       </header>
+
+      {/* The four payouts as a table of figures: the numbers are what a player
+          is actually weighing up, and first place is the one to chase. */}
+      <dl className="points-grid">
+        <div className="is-top"><dt>1st</dt><dd>{medals.first}</dd></div>
+        <div><dt>2nd</dt><dd>{medals.second}</dd></div>
+        <div><dt>3rd</dt><dd>{medals.third}</dd></div>
+        <div><dt>effort</dt><dd>{medals.effort}</dd></div>
+      </dl>
 
       {/* Your own proof, played back before the reveal. Deciding whether to
           replace a take is impossible from memory — and this leaks nothing,
@@ -58,17 +61,21 @@ export default async function ObjectivePage({
         </section>
       )}
 
-      {open ? (
-        <SubmitPanel
-          objectiveId={objective.id}
-          playerId={player.id}
-          alreadySubmitted={objective.mySubmission !== null}
-        />
-      ) : (
-        <p className="status">Submissions are closed for this week.</p>
-      )}
-
       <ObjectiveRoster roster={roster} viewerId={player.id} />
+
+      {/* Last in the flow and sticky, so the action sits in thumb reach above
+          the tab bar however long the roster gets. */}
+      <div className="dock">
+        {open ? (
+          <SubmitPanel
+            objectiveId={objective.id}
+            playerId={player.id}
+            alreadySubmitted={objective.mySubmission !== null}
+          />
+        ) : (
+          <p className="status">Submissions are closed for this week.</p>
+        )}
+      </div>
     </main>
   )
 }

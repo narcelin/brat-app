@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { ClerkProvider } from '@clerk/nextjs'
+import { ClerkProvider, Show } from '@clerk/nextjs'
 import { AppHeader } from '../components/AppHeader'
 import { ServiceWorker } from '../components/ServiceWorker'
+import { TabBar } from '../components/TabBar'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -25,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
           <AppHeader />
           {children}
+          <Show when="signed-in">
+            <TabBar />
+          </Show>
           <ServiceWorker />
         </body>
       </html>

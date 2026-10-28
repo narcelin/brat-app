@@ -27,6 +27,14 @@ export default async function LeaderboardPage() {
   const beats = (a: (typeof standings)[number], b: (typeof standings)[number]) =>
     a.points > b.points || (a.points === b.points && a.golds > b.golds)
 
+  const rankOf = (standing: (typeof standings)[number]) =>
+    standings.filter((other) => beats(other, standing)).length + 1
+
+  // A podium of zeroes before anyone has scored is noise, and fewer than three
+  // players cannot fill one.
+  const podium = standings.length >= 3 && standings[0].points > 0 ? standings.slice(0, 3) : []
+  const rest = standings.slice(podium.length)
+
   return (
     <main className="screen">
       <header>
@@ -34,24 +42,49 @@ export default async function LeaderboardPage() {
         <p className="sub">{season.name} — only weeks that have finished voting count.</p>
       </header>
 
-      <ol className="standings">
-        {standings.map((standing) => (
-          <li key={standing.userId} className={standing.userId === player.id ? 'is-you' : undefined}>
-            <span className="standings-rank">
-              {standings.filter((other) => beats(other, standing)).length + 1}
-            </span>
-            <Avatar seed={standing.avatarSeed} className="roster-face" />
-            <span className="standings-name">{standing.displayName}</span>
-            <span className="standings-medals">
-              {standing.golds}🥇 {standing.silvers}🥈 {standing.bronzes}🥉
-            </span>
-            {/* Participation, not achievement — kept visually quieter than the
-                medals so it never reads as a fourth place above bronze. */}
-            <span
-              className="standings-entries"
-              title={`${standing.entries} ${standing.entries === 1 ? 'objective' : 'objectives'} posted`}
+      {podium.length > 0 && (
+        <ol className="podium" aria-label="Top three">
+          {/* Drawn 2-1-3 so first stands in the middle; CSS `order` moves the
+              boxes, so the list itself still reads 1-2-3. */}
+          {podium.map((standing, i) => (
+            <li
+              key={standing.userId}
+              className={`podium-${i + 1}${standing.userId === player.id ? ' is-you' : ''}`}
             >
-              📸 {standing.entries}
+              <Avatar seed={standing.avatarSeed} className="podium-face" />
+              <span className="podium-name">{standing.displayName}</span>
+              <span className="podium-step">
+                <b>{rankOf(standing)}</b>
+                <span>{standing.points} pts</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <ol className="standings">
+        {rest.map((standing) => (
+          <li key={standing.userId} className={standing.userId === player.id ? 'is-you' : undefined}>
+            <span className="standings-rank">{rankOf(standing)}</span>
+            <Avatar seed={standing.avatarSeed} className="roster-face" />
+            <span className="standings-main">
+              <span className="standings-name">
+                {standing.displayName}
+                {standing.userId === player.id && <span className="roster-you"> you</span>}
+              </span>
+              <span className="standings-medals">
+                <span className="medal is-gold">{standing.golds}<span className="sr-only"> gold</span></span>
+                <span className="medal is-silver">{standing.silvers}<span className="sr-only"> silver</span></span>
+                <span className="medal is-bronze">{standing.bronzes}<span className="sr-only"> bronze</span></span>
+                {/* Participation, not achievement — kept visually quieter than the
+                    medals so it never reads as a fourth place above bronze. */}
+                <span
+                  className="standings-entries"
+                  title={`${standing.entries} ${standing.entries === 1 ? 'objective' : 'objectives'} posted`}
+                >
+                  · {standing.entries} posted
+                </span>
+              </span>
             </span>
             <b className="standings-points">{standing.points}</b>
           </li>

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { currentAccess } from '../lib/auth/current-player'
-import { getCurrentWeek } from '../lib/db/queries'
+import { getCurrentWeek, getObjectiveRoster } from '../lib/db/queries'
 import { canSubmit } from '../lib/domain/submission-rules'
 import { ObjectiveCard } from '../components/ObjectiveCard'
 import { WeekStatus } from '../components/WeekStatus'
@@ -47,6 +47,10 @@ export default async function ThisWeekPage() {
   }
 
   const open = canSubmit(week.state)
+  // Turnout per card. Who has posted, never what — the roster query selects no
+  // media at all, so this is as safe before the reveal as the objective page.
+  const rosters = await Promise.all(week.objectives.map((o) => getObjectiveRoster(o.id)))
+  const posted = week.objectives.filter((o) => o.mySubmission !== null).length
 
   return (
     <main className="screen">
@@ -54,12 +58,20 @@ export default async function ThisWeekPage() {
         number={week.number}
         state={week.state}
         closesAt={week.windows.submissionsCloseAt}
+        posted={posted}
+        total={week.objectives.length}
       />
       {week.state === 'VOTING' && (
-        <a className="btn" href="/vote">Vote now — submissions are closed</a>
+        <a className="banner" href="/vote">
+          <span className="banner-text">
+            <b>Everything&apos;s revealed</b>
+            <span>Rank every objective — you cannot vote for yourself.</span>
+          </span>
+          <span className="banner-cta">vote</span>
+        </a>
       )}
       <div className="stack">
-        {week.objectives.map((o) => (
+        {week.objectives.map((o, i) => (
           <ObjectiveCard
             key={o.id}
             id={o.id}
@@ -68,10 +80,10 @@ export default async function ThisWeekPage() {
             tier={o.tier}
             submitted={o.mySubmission !== null}
             open={open}
+            roster={rosters[i]}
           />
         ))}
       </div>
-      <a className="btn ghost" href="/leaderboard">Standings</a>
     </main>
   )
 }

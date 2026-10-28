@@ -35,6 +35,18 @@ export default async function VotePage() {
         </p>
       </header>
 
+      {/* Jump links rather than tabs: every ballot stays on the page, so a
+          half-finished one is never hidden behind an unselected tab. */}
+      {ballot.length > 1 && (
+        <nav className="jump" aria-label="Objectives">
+          {ballot.map((objective) => (
+            <a key={objective.objectiveId} href={`#objective-${objective.objectiveId}`}>
+              {objective.tier}
+            </a>
+          ))}
+        </nav>
+      )}
+
       {ballot.length === 0 ? (
         <p className="status">Nobody posted anything this week.</p>
       ) : (

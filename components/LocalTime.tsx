@@ -9,12 +9,12 @@ import { useEffect, useState } from 'react'
  *  client render instead would disagree with the server-rendered HTML and
  *  trip a hydration mismatch, so the formatted value is only swapped in after
  *  mount; until then a stable placeholder is rendered on both sides. */
-export function LocalTime({ iso }: { iso: string }) {
+export function LocalTime({ iso, options }: { iso: string; options?: Intl.DateTimeFormatOptions }) {
   const [formatted, setFormatted] = useState<string | null>(null)
 
   useEffect(() => {
-    setFormatted(new Date(iso).toLocaleString())
-  }, [iso])
+    setFormatted(new Date(iso).toLocaleString(undefined, options))
+  }, [iso, options])
 
   return <time dateTime={iso}>{formatted ?? '…'}</time>
 }
